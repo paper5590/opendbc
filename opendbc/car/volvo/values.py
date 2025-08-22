@@ -30,6 +30,8 @@ class VolvoCarDocs(CarDocs):
 class VolvoPlatformConfig(PlatformConfig):
   dbc_dict: DbcDict = field(default_factory=lambda: {
     Bus.pt: 'volvo_cma',
+    Bus.main: 'volvo_cma',
+    Bus.party: 'volvo_cma',
   })
 
 

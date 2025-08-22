@@ -16,7 +16,7 @@ class CarState(CarStateBase):
 
     # car speed
     # Basic vehicle state from BCM2_SPEED
-    ret.vEgoRaw = cp_party.vl["BCM2_SPEED"]["SPEED"] * CV.MS_TO_KPH
+    ret.vEgoRaw = cp_party.vl["BCM2_SPEED"]["SPEED"]
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw < 0.1
 
@@ -28,7 +28,7 @@ class CarState(CarStateBase):
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
-    ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR']
+    ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # TODO: Fix units
     #ret.steeringTorque = cp.vl['STEERING']['DRIVER_TORQUE']
     #ret.steeringTorqueEps = cp.vl['IS_DAT_DIRA']['EPS_TORQUE']
     #ret.steeringPressed = self.update_steering_pressed(abs(ret.steeringTorque) > CarControllerParams.STEER_DRIVER_ALLOWANCE, 5)
