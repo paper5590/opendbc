@@ -28,11 +28,16 @@ class CarState(CarStateBase):
     ret.parkingBrake = False # TODO: add parking brake
 
     # steering wheel
-    ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # TODO: Fix units
-    #ret.steeringTorque = cp.vl['STEERING']['DRIVER_TORQUE']
-    #ret.steeringTorqueEps = cp.vl['IS_DAT_DIRA']['EPS_TORQUE']
-    #ret.steeringPressed = self.update_steering_pressed(abs(ret.steeringTorque) > CarControllerParams.STEER_DRIVER_ALLOWANCE, 5)
-    #self.eps_active = cp.vl['IS_DAT_DIRA']['EPS_STATE_LKA'] == 3 # 0: Unauthorized, 1: Authorized, 2: Available, 3: Active, 4: Defect
+    ret.steeringAngleDeg = cp_party.vl['PSCM']['PSCM_ANGLE_SENSOR'] # TODO: Fix units and scaling
+
+    # For torque-based control, we need steering torque feedback
+    # TODO: Find actual steering torque signals in the DBC or reverse engineer them
+    ret.steeringTorque = 0  # Driver torque - placeholder until signal is found
+    ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
+    ret.steeringPressed = False  # TODO: Implement based on actual torque signals
+
+    # EPS status - placeholder until actual signal is found
+    self.eps_active = True  # Assume EPS is active for now
 
     # cruise
     # Cruise control / Pilot Assist status from BCM2

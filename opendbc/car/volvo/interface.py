@@ -23,7 +23,9 @@ class CarInterface(CarInterfaceBase):
     ret.steerLimitTimer = 0.1
     ret.steerAtStandstill = True
 
-    ret.steerControlType = structs.CarParams.SteerControlType.angle
+    # Use torque-based steering control for Volvo CMA platform
+    ret.steerControlType = structs.CarParams.SteerControlType.torque
+    CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
     ret.radarUnavailable = True
 
     ret.alphaLongitudinalAvailable = False

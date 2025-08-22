@@ -10,14 +10,23 @@ Ecu = CarParams.Ecu
 
 
 class CarControllerParams:
-  STEER_STEP = 1
+  STEER_STEP = 1  # 100 Hz LCA command frequency (controlsd runs at 100 Hz)
 
+  # Torque-based steering parameters
+  STEER_MAX = 255                      # Max torque value (8-bit signed in DBC)
+  STEER_DELTA_UP = 10                  # Torque increase per refresh
+  STEER_DELTA_DOWN = 25                # Torque decrease per refresh
+  STEER_DRIVER_ALLOWANCE = 15          # Allowed driver torque before limiting
+  STEER_DRIVER_MULTIPLIER = 3          # Weight driver torque heavily
+  STEER_DRIVER_FACTOR = 1              # From DBC
+  STEER_ERROR_MAX = 100                # Max delta between torque cmd and torque motor
+
+  # Keep angle limits for reference (not used in torque mode)
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
     390, # deg
     ([0., 5., 25.], [2.5, 1.5, .2]),
     ([0., 5., 25.], [5., 2., .3]),
   )
-  STEER_DRIVER_ALLOWANCE = 5  # Driver intervention threshold, 0.5 Nm
 
 
 @dataclass

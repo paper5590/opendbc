@@ -8,13 +8,26 @@ def volvo_checksum(address: int, sig, d: bytearray) -> int:
   return (chk_ini - checksum) & 0xF
 
 
-def create_lka_steering(packer, lat_active: bool, apply_angle: float, status: int):
+def create_lca_steering(packer, lat_active: bool, apply_torque: int):
+  """
+  Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
+  Uses torque-based control via the LCA_STEER signal.
+
+  Args:
+    packer: CAN packer instance
+    lat_active: Whether lateral control is active
+    apply_torque: Steering torque to apply (-255 to 255)
+  """
   values = {
-    'DRIVE': 1,
-    'STATUS': status,
-    'LXA_ACTIVATION': 1,
-    'TORQUE_FACTOR': lat_active * 100,
-    'SET_ANGLE': apply_angle,
+    'LCA_STEER_ACTIVE_INCOHERENT': 0,
+    'LCA_STEER_ACTIVE_PENDING_VERIFICATION': 1 if lat_active else 0,
+    'LCA_STEER_LOOSELY_1': 0,
+    'LCA_STEER_LOOSELY_2': 0,
+    'BITWISE_FLAGS_1': 0,
+    'CURVE_RIGHT': 0,
+    'BITWISE_FLAGS_2': 0,
+    'LCA_STEER': apply_torque,  # Signed 8-bit torque value
+    'ASSIST_MAGNITUDE': 0,
   }
 
-  return packer.make_can_msg('LANE_KEEP_ASSIST', 0, values)
+  return packer.make_can_msg('LCA', 0, values)
