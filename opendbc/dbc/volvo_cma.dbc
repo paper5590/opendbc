@@ -37,10 +37,13 @@ BO_ 87 NEW_MSG_57: 8 XXX
 BO_ 88 LCA: 8 XXX
  SG_ LCA_STEER_ACTIVE_INCOHERENT : 16|1@0+ (1,0) [0|1] "" XXX
  SG_ LCA_STEER_ACTIVE_PENDING_VERIFICATION : 18|2@0+ (1,0) [0|3] "" XXX
- SG_ LCA_STEER_SUSPECT_1 : 29|6@0+ (1,0) [0|1] "" XXX
- SG_ LCA_STEER_DIRECTION : 31|2@0+ (1,0) [0|1] "" XXX
- SG_ NEW_SIGNAL_1 : 48|6@1+ (1,0) [0|63] "" XXX
- SG_ NEW_SIGNAL_2 : 54|2@1+ (1,0) [0|3] "" XXX
+ SG_ LCA_STEER_LOOSELY_1 : 15|8@0+ (1,0) [0|255] "" XXX
+ SG_ LCA_STEER_LOOSELY_2 : 31|8@0+ (1,0) [0|255] "" XXX
+ SG_ BITWISE_FLAGS_1 : 39|8@0+ (1,0) [0|255] "" XXX
+ SG_ CURVE_RIGHT : 45|6@0+ (1,0) [0|63] "" XXX
+ SG_ BITWISE_FLAGS_2 : 46|2@1+ (1,0) [0|3] "" XXX
+ SG_ LCA_STEER : 55|8@0- (1,0) [0|255] "" XXX
+ SG_ ASSIST_MAGNITUDE : 60|4@1+ (1,0) [0|15] "" XXX
 
 BO_ 103 BCM2_SPEED: 8 XXX
  SG_ NEW_SIGNAL_1 : 8|8@1+ (1,0) [0|255] "" XXX
@@ -68,4 +71,5 @@ BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ NEW_SIGNAL_3 : 24|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_2 : 29|1@0+ (1,0) [0|1] "" XXX
 
-CM_ SG_ 88 LCA_STEER_DIRECTION "0: No request; 1: Right; 2: Left: 3: ?";
+CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
+CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";
