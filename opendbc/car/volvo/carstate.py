@@ -52,6 +52,15 @@ class CarState(CarStateBase):
     #  ret.gearShifter = GearShifter.reverse
     #else:
     #  ret.gearShifter = GearShifter.drive
+    gearPosition = cp.vl['GEAR_POSITION']['GEAR_POSITION'] # 0: Parked; 1: R; 2: N; 3: D
+    if gearPosition == 0:
+      ret.gearShifter = GearShifter.park
+    elif gearPosition == 1:
+      ret.gearShifter = GearShifter.reverse
+    elif gearPosition == 2:
+      ret.gearShifter = GearShifter.neutral
+    elif gearPosition == 3:
+      ret.gearShifter = GearShifter.drive
 
     # blinkers TODO
     ret.leftBlinker = False
