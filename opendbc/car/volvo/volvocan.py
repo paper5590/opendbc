@@ -1,13 +1,3 @@
-def volvo_checksum(address: int, sig, d: bytearray) -> int:
-  # Volvo CMA platform checksum calculation
-  # TODO: Update with actual Volvo checksum algorithm once reverse engineered
-  chk_ini = {0x452: 0x4, 0x38D: 0x7, 0x42D: 0xC}.get(address, 0xB)
-  byte = sig.start_bit // 8
-  d[byte] &= 0x0F if sig.start_bit % 8 >= 4 else 0xF0
-  checksum = sum((b >> 4) + (b & 0xF) for b in d)
-  return (chk_ini - checksum) & 0xF
-
-
 def create_lca_steering(packer, lat_active: bool, apply_torque: int):
   """
   Create LCA (Lane Centering Assist) steering command for Volvo CMA platform.
@@ -18,16 +8,42 @@ def create_lca_steering(packer, lat_active: bool, apply_torque: int):
     lat_active: Whether lateral control is active
     apply_torque: Steering torque to apply (-255 to 255)
   """
-  values = {
-    'LCA_STEER_ACTIVE_INCOHERENT': 0,
-    'LCA_STEER_ACTIVE_PENDING_VERIFICATION': 1 if lat_active else 0,
-    'LCA_STEER_LOOSELY_1': 0,
-    'LCA_STEER_LOOSELY_2': 0,
-    'BITWISE_FLAGS_1': 0,
-    'CURVE_RIGHT': 0,
-    'BITWISE_FLAGS_2': 0,
-    'LCA_STEER': apply_torque,  # Signed 8-bit torque value
-    'ASSIST_MAGNITUDE': 0,
-  }
+  if apply_torque < 0: # If torque is negative
+    curve_right = 63 # Turn right
+  else:
+    curve_right = 0 # Turn left
 
-  return packer.make_can_msg('LCA', 0, values)
+  if not lat_active:
+    values = {
+      'NEW_SIGNAL_3': 0,
+      'NEW_SIGNAL_2': 1,
+      'NEW_SIGNAL_1': 3,
+      'LCA_STEER_LOOSELY_1': 0,
+      'LCA_STEER_ACTIVE_INCOHERENT': 0,
+      'LCA_STEER_ACTIVE': 0,
+      'NEW_SIGNAL_7': 7,
+      'LCA_STEER_LOOSELY_2': 0,
+      'NEW_SIGNAL_4': 251,
+      'CURVE_RIGHT': 0,
+      'NEW_SIGNAL_5': 3,
+      'LCA_STEER': 0,
+      'NEW_SIGNAL_6': 15,
+    }
+  else:
+    values = {
+      'NEW_SIGNAL_3': 0,
+      'NEW_SIGNAL_2': 0,
+      'NEW_SIGNAL_1': 3,
+      'LCA_STEER_LOOSELY_1': 0,
+      'LCA_STEER_ACTIVE_INCOHERENT': 1,
+      'LCA_STEER_ACTIVE': 3,
+      'NEW_SIGNAL_7': 7,
+      'LCA_STEER_LOOSELY_2': 0,
+      'NEW_SIGNAL_4': 25, # ?
+      'CURVE_RIGHT': curve_right,
+      'NEW_SIGNAL_5': 3,
+      'LCA_STEER': apply_torque,
+      'NEW_SIGNAL_6': 15, # ?
+    }
+
+  return packer.make_can_msg('LCA', 2, values)
