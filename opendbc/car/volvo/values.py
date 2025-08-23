@@ -47,19 +47,19 @@ class VolvoPlatformConfig(PlatformConfig):
 class CAR(Platforms):
   VOLVO_XC40_RECHARGE = VolvoPlatformConfig(
     [VolvoCarDocs("Volvo XC40 Recharge 2023")],
-    CarSpecs(mass=2188, wheelbase=2.702, steerRatio=14.3),
+    CarSpecs(mass=2030, wheelbase=2.702, steerRatio=15.8),
   )
 
 
 # FW Query configuration for Volvo CMA platform
-FW_QUERY_CONFIG = FwQueryConfig(
-  requests=[
-    Request(
-      [StdQueries.TESTER_PRESENT_REQUEST, StdQueries.UDS_VERSION_REQUEST],
-      [StdQueries.TESTER_PRESENT_RESPONSE, StdQueries.UDS_VERSION_RESPONSE],
-      bus=0,
-    ),
-  ],
-)
+# FW_QUERY_CONFIG = FwQueryConfig(
+#   requests=[
+#     Request(
+#       [StdQueries.TESTER_PRESENT_REQUEST, StdQueries.UDS_VERSION_REQUEST],
+#       [StdQueries.TESTER_PRESENT_RESPONSE, StdQueries.UDS_VERSION_RESPONSE],
+#       bus=0,
+#     ),
+#   ],
+# )
 
 DBC = CAR.create_dbc_map()
