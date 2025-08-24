@@ -32,9 +32,9 @@ class CarState(CarStateBase):
 
     # For torque-based control, we need steering torque feedback
     # TODO: Find actual steering torque signals in the DBC or reverse engineer them
-    ret.steeringTorque = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION'])/10.0  # Driver torque
+    ret.steeringTorque = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION'])  # Driver torque
     ret.steeringTorqueEps = 0  # EPS torque - placeholder until signal is found
-    ret.steeringPressed = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']) > 0 # TODO: Use torque signal instead of deviation, if found...
+    ret.steeringPressed = abs(cp_party.vl['PSCM']['DRIVER_INPUT_DEVIATION']) > CarControllerParams.STEER_DRIVER_ALLOWANCE
 
     # EPS status - placeholder until actual signal is found
     self.eps_active = True  # Assume EPS is active for now
