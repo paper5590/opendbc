@@ -61,5 +61,8 @@ class CAR(Platforms):
 #     ),
 #   ],
 # )
+FW_QUERY_CONFIG = FwQueryConfig(
+  requests=[]
+)
 
 DBC = CAR.create_dbc_map()
