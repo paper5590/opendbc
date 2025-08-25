@@ -9,10 +9,11 @@
 #define VOLVO_SAS                 85U    // RX from SAS, steering angle sensor
 #define VOLVO_PSCM                22U    // RX from PSCM, driver steering input
 #define VOLVO_GEAR_POSITION       128U   // RX from transmission, gear position
+#define VOLVO_ECM_1               0x250
 
 // CAN bus definitions for Volvo CMA platform
 #define VOLVO_VCU1_BUS    0U  // VCU1 bus (where LCA originates)
-#define VOLVO_FR_BUS      1U  // FlexRay backbone bus (ignored for now)
+#define VOLVO_PT_BUS      1U  // Front 1 CAN bus (where ECM is)
 #define VOLVO_PSCM_BUS    2U  // PSCM bus (BCM2, SAS, EGSM, where LCA is sent to)
 
 static void volvo_rx_hook(const CANPacket_t *msg) {
@@ -24,6 +25,14 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
     if (msg->addr == VOLVO_GEAR_POSITION) {
       // Signal: GEAR_POSITION (0: Park, 1: Reverse, 2: Neutral, 3: Drive)
       // This is used by carstate.py for gear shifter state
+    }
+  }
+
+  if (msg->bus == VOLVO_PT_BUS) {
+    if (msg->addr == VOLVO_ECM_1) {
+      // Gas pedal position
+      int gas_pedal_position = msg->data[3];
+      gas_pressed = gas_pedal_position > 20+2; // 20 baseline + 2 tolerance
     }
   }
 
@@ -117,6 +126,9 @@ static safety_config volvo_init(uint16_t param) {
 
     // Driver steering input - required for override detection (on PSCM bus)
     {.msg = {{VOLVO_PSCM, VOLVO_PSCM_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+
+    // Gas pedal position - required for safety (on PT bus)
+    {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);

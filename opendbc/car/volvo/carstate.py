@@ -11,6 +11,7 @@ TransmissionType = structs.CarParams.TransmissionType
 class CarState(CarStateBase):
   def update(self, can_parsers) -> structs.CarState:
     cp = can_parsers[Bus.main]
+    cp_pt = can_parsers[Bus.pt]
     cp_party = can_parsers[Bus.party]
     ret = structs.CarState()
 
@@ -21,7 +22,7 @@ class CarState(CarStateBase):
     ret.standstill = ret.vEgoRaw < 0.1
 
     # gas
-    ret.gasPressed = False # TODO: add gas pedal
+    ret.gasPressed = cp_pt.vl["ECM_1"]["GAS_PEDAL_POSITION"] > 20+2 # 20 baseline + 2 tolerance
 
     # brake
     ret.brakePressed = bool(cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])
@@ -76,5 +77,6 @@ class CarState(CarStateBase):
   def get_can_parsers(CP):
     return {
       Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], [], 0),
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 1),
       Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], 2),
     }

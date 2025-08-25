@@ -27,6 +27,9 @@ BO_ 38 NEW_MSG_26: 8 XXX
  SG_ NEW_SIGNAL_6 : 51|12@0+ (1,0) [0|4095] "" XXX
  SG_ NEW_SIGNAL_5 : 55|1@0+ (1,0) [0|1] "" XXX
 
+BO_ 55 NEW_MSG_37: 8 XXX
+ SG_ ACCELERATOR_PEDAL_RATE_OF_CHANGE : 6|15@0+ (1,0) [0|32767] "" XXX
+
 BO_ 69 EGSM: 8 XXX
  SG_ COUNTER_1 : 3|12@0+ (1,0) [0|4095] "" XXX
  SG_ GEAR_LEVER_DBC_INCOHERENT : 5|2@0+ (1,0) [0|3] "" XXX
@@ -82,6 +85,9 @@ BO_ 128 GEAR_POSITION: 8 XXX
 BO_ 336 NEW_MSG_150: 8 XXX
  SG_ IGN_DRAFT : 5|2@0+ (1,0) [0|3] "" XXX
 
+BO_ 592 ECM_1: 8 XXX
+ SG_ GAS_PEDAL_POSITION : 31|8@0+ (1,0) [0|255] "" XXX
+
 BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ SWM_MULTIMEDIA_ACTIVITY : 22|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_1 : 23|1@0+ (1,0) [0|1] "" XXX
@@ -92,3 +98,4 @@ CM_ BO_ 23 "Might be related to PSCM 0x16";
 CM_ SG_ 88 LCA_ENABLE_INV "Master enable, active-low";
 CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
 CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";
+CM_ SG_ 592 GAS_PEDAL_POSITION "Full gas ~200; Idle ~20";
