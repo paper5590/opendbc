@@ -14,9 +14,10 @@ class CarInterface(CarInterfaceBase):
   def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, alpha_long, is_release, docs) -> structs.CarParams:
     ret.brand = 'volvo'
 
-    ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.volvo)]
+    #ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.volvo)]
+    ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.noOutput)]
 
-    ret.dashcamOnly = False
+    ret.dashcamOnly = True
 
     ret.steerActuatorDelay = 0.3
     ret.steerLimitTimer = 0.1
