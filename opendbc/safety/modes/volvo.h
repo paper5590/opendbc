@@ -46,7 +46,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
       // Signal: CRUISE_OR_PILOT_ASSIST_ENGAGED (also on PSCM bus)
       bool cruise_engaged = (msg->data[1] >> 4) & 1U;
-      controls_allowed = cruise_engaged;
+      controls_allowed = cruise_engaged && !brake_pressed;
     }
 
     // Update steering angle from SAS
