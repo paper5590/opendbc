@@ -35,7 +35,6 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 "FORD_F_150_LIGHTNING_MK1" = [nan, 1.5, nan]
 "FORD_MUSTANG_MACH_E_MK1" = [nan, 1.5, nan]
 "FORD_RANGER_MK2" = [nan, 1.5, nan]
-"VOLVO_XC40_RECHARGE" = [nan, 1.5, nan]
 ###
 
 # No steering wheel
@@ -88,6 +87,7 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 "ACURA_MDX_4G_MMR" = [1.25, 1.25, 0.15]
 "HONDA_CRV_6G" = [1.3, 1.3, 0.2]
 "HONDA_CITY_7G" = [1.2, 1.2, 0.23]
+"VOLVO_XC40_RECHARGE" = [1.5, 1.5, 0.1] # Guess TODO: Check
 
 # Dashcam or fallback configured as ideal car
 "MOCK" = [10.0, 10, 0.0]
