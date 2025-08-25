@@ -13,7 +13,7 @@ class CarControllerParams:
   STEER_STEP = 1  # 100 Hz LCA command frequency (controlsd runs at 100 Hz)
 
   # Torque-based steering parameters
-  STEER_MAX = 255                      # Max torque value (8-bit signed in DBC)
+  STEER_MAX = 127                      # Max torque value (8-bit signed in DBC)
   STEER_DELTA_UP = 1                  # Torque increase per refresh
   STEER_DELTA_DOWN = 2                # Torque decrease per refresh
   STEER_DRIVER_ALLOWANCE = 10          # Allowed driver torque before limiting
