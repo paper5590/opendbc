@@ -50,7 +50,7 @@ BO_ 87 NEW_MSG_57: 8 XXX
 
 BO_ 88 LCA: 8 XXX
  SG_ NEW_SIGNAL_3 : 1|2@0+ (1,0) [0|3] "" XXX
- SG_ NEW_SIGNAL_2 : 3|1@0+ (1,0) [0|1] "" XXX
+ SG_ LCA_ENABLE_INV : 3|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_1 : 7|2@0+ (1,0) [0|3] "" XXX
  SG_ LCA_STEER_LOOSELY_1 : 15|8@0+ (1,0) [0|255] "" XXX
  SG_ LCA_STEER_ACTIVE_INCOHERENT : 16|1@0+ (1,0) [0|1] "" XXX
@@ -89,5 +89,6 @@ BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ NEW_SIGNAL_2 : 29|1@0+ (1,0) [0|1] "" XXX
 
 CM_ BO_ 23 "Might be related to PSCM 0x16";
+CM_ SG_ 88 LCA_ENABLE_INV "Master enable, active-low";
 CM_ SG_ 88 CURVE_RIGHT "Only appears to be HIGH on curve right, LOW curve left";
 CM_ SG_ 88 LCA_STEER "Seems torque-based, signed, follows the road curvature";
