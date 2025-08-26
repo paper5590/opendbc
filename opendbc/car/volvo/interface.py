@@ -17,7 +17,7 @@ class CarInterface(CarInterfaceBase):
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.volvo)]
     #ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.noOutput)]
 
-    ret.dashcamOnly = True
+    ret.dashcamOnly = False
 
     ret.steerActuatorDelay = 0.3
     ret.steerLimitTimer = 0.1

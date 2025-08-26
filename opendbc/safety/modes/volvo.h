@@ -41,17 +41,16 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
     // Update vehicle speed from BCM2_SPEED
     if (msg->addr == VOLVO_BCM2_SPEED) {
       // Signal: SPEED (0.01 m/s per bit)
-      int speed_raw = (msg->data[4] << 4) | ((msg->data[5] & 0xF0U) >> 4);
-      vehicle_moving = speed_raw > 10; // > 0.1 m/s
+      uint16_t speed_raw = ((msg->data[4] & 0x1F) << 7) | ((msg->data[5] & 0xFE) >> 1);      vehicle_moving = speed_raw > 10; // > 0.1 m/s
       UPDATE_VEHICLE_SPEED(speed_raw * 0.01);
     }
 
     // Update brake pedal state from BCM2
     if (msg->addr == VOLVO_BCM2) {
       // Signals: BRAKE_PEDAL_PRESSED_A, BRAKE_PEDAL_PRESSED_B
-      bool brake_a = (msg->data[5] >> 7) & 1U;
+      bool brake_a = (msg->data[5] >> 7) & 1U; // Active low
       bool brake_b = (msg->data[5] >> 6) & 1U;
-      brake_pressed = brake_a || brake_b;
+      brake_pressed = !brake_a || brake_b;
 
       // Signal: CRUISE_OR_PILOT_ASSIST_ENGAGED (also on PSCM bus)
       bool cruise_engaged = (msg->data[1] >> 4) & 1U;
