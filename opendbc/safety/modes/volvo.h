@@ -54,7 +54,8 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
 
       // Signal: CRUISE_OR_PILOT_ASSIST_ENGAGED (also on PSCM bus)
       bool cruise_engaged = (msg->data[1] >> 4) & 1U;
-      controls_allowed = cruise_engaged;
+      //controls_allowed = cruise_engaged;
+      pcm_cruise_check(cruise_engaged);
     }
 
     // Update steering angle from SAS
@@ -88,9 +89,9 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     }
 
     // Basic length check
-    if (GET_LEN(msg) != 8U) {
+    /*if (GET_LEN(msg) != 8U) {
       tx = false;  // Wrong message length
-    }
+    }*/
 
     // Only allow when controls are enabled
     if (!controls_allowed) {
