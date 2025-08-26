@@ -94,9 +94,9 @@ static bool volvo_tx_hook(const CANPacket_t *msg) {
     }*/
 
     // Only allow when controls are enabled
-    if (!controls_allowed) {
-      tx = false;
-    }
+    // if (!controls_allowed) {
+    //   tx = false;
+    // }
   }
 
   return tx;
