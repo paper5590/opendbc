@@ -113,13 +113,13 @@ static safety_config volvo_init(uint16_t param) {
   // Define RX checks - minimal monitoring for basic safety
   static RxCheck volvo_rx_checks[] = {
     // Gear position - from VCU1 bus (bus 0)
-    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_VCU1_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_GEAR_POSITION, VOLVO_VCU1_BUS, 8, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
     // Vehicle speed - required for basic safety (on PSCM bus)
-    {.msg = {{VOLVO_BCM2_SPEED, VOLVO_PSCM_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_BCM2_SPEED, VOLVO_PSCM_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
     // Brake pedal and cruise state - required for safety (on PSCM bus)
-    {.msg = {{VOLVO_BCM2, VOLVO_PSCM_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_BCM2, VOLVO_PSCM_BUS, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
     // Steering angle - required for lateral control (on PSCM bus)
     {.msg = {{VOLVO_SAS, VOLVO_PSCM_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
@@ -128,7 +128,7 @@ static safety_config volvo_init(uint16_t param) {
     {.msg = {{VOLVO_PSCM, VOLVO_PSCM_BUS, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
 
     // Gas pedal position - required for safety (on PT bus)
-    {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 20U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{VOLVO_ECM_1, VOLVO_PT_BUS, 8, 17U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
   return BUILD_SAFETY_CFG(volvo_rx_checks, VOLVO_TX_MSGS);
