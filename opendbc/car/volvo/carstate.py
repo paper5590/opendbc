@@ -22,7 +22,7 @@ class CarState(CarStateBase):
     ret.standstill = ret.vEgoRaw < 0.1
 
     # gas
-    ret.gasPressed = cp_pt.vl["ECM_1"]["GAS_PEDAL_POSITION"] > 20+2 # 20 baseline + 2 tolerance
+    ret.gasPressed = cp_pt.vl["ECM_1"]["GAS_PEDAL_POSITION"] > 20+1 # 20 baseline + 1 tolerance
 
     # brake
     ret.brakePressed = bool(cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_A"] or cp_party.vl["BCM2"]["BRAKE_PEDAL_PRESSED_B"])
@@ -45,9 +45,9 @@ class CarState(CarStateBase):
     # Cruise control / Pilot Assist status from BCM2
     ret.cruiseState.enabled = cp.vl["BCM2"]["CRUISE_OR_PILOT_ASSIST_ENGAGED"] == 1
     ret.cruiseState.available = True  # TODO: Determine actual availability
-    ret.cruiseState.speed = 0  # TODO: Find cruise set speed
+    ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
-    ret.cruiseState.standstill = False
+    ret.cruiseState.standstill = ret.standstill # False # Todo: Find cruise control standstill signal
 
     # gear TODO
     #if bool(cp_cam.vl['Dat_BSI']['P103_Com_bRevGear']):
@@ -64,11 +64,11 @@ class CarState(CarStateBase):
     elif gearPosition == 3:
       ret.gearShifter = GearShifter.drive
 
-    # blinkers TODO
+    # blinkers TODO FlexRay
     ret.leftBlinker = False
     ret.rightBlinker = False
 
-    # lock info
+    # lock info TODO FlexRay
     ret.doorOpen = False # TODO: add door open
     ret.seatbeltUnlatched = False # TODO: add seatbelt unlatched
     return ret
@@ -76,7 +76,7 @@ class CarState(CarStateBase):
   @staticmethod
   def get_can_parsers(CP):
     return {
-      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], [], 0),
-      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 1),
-      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], 2),
+      Bus.main: CANParser(DBC[CP.carFingerprint][Bus.main], [], 0), # VCU1 car side
+      Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], [], 1), # VCU1 ECM side
+      Bus.party: CANParser(DBC[CP.carFingerprint][Bus.party], [], 2), # VCU PSCM/BCM2 side
     }
