@@ -130,9 +130,7 @@ class CarController(CarControllerBase):
       # Increment counter by +4, wrap at 15 (0xF never used)
       self.lca_5_counter = (self.lca_5_counter + 4) % 15
 
-      can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer,
-                                            CS.msg_lca_5, self.lca_5_counter,
-                                            CS.out.steeringAngleDeg))
+      #can_sends.append(create_lca_5_message(self.packer, CC.latActive, lca_steer, CS.msg_lca_5, self.lca_5_counter, CS.out.steeringAngleDeg))
 
     # LCA_4 - 0x90 - 29 Hz
     # Spoof LCA_ENABLE bits to maintain PA ON state when openpilot is active
