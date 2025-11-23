@@ -258,6 +258,8 @@ def create_lca_5_message(packer, lat_active: bool, lca_steer: int, msg_lca_5: di
   else:
     lca_5_steer = msg_lca_5.get('LCA_5_STEER', 0)
 
+  lca_5_steer = -127
+
   # Build values dictionary
   values = {
     'WHEEL_SPEED_1': msg_lca_5['WHEEL_SPEED_1'],
