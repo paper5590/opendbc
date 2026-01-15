@@ -107,7 +107,7 @@ def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, sp
   # - spoof_pa_hands_on_wheel (Pilot Assist is engaged AND toggle enabled)
   if lat_active or spoof_pa_hands_on_wheel:
     #values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
-    values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
+    #values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
     values['HANDS_ON_STEERING_WHEEL_B'] = 186 if frame % 2 == 0 else 154 # msg_pscm['HANDS_ON_STEERING_WHEEL_B']
     values['HANDS_ON_STEERING_WHEEL_A'] = 195 if frame % 2 == 0 else 249 # msg_pscm['HANDS_ON_STEERING_WHEEL_A']
 

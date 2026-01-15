@@ -80,17 +80,13 @@ class CarState(CarStateBase):
         self.cruise_last_disabled_frame = self.CC_frame
         self.cruise_double_tap_active = False
 
-      # The double_tap_active flag persists across gas press/release cycles
-      # This allows auto re-engagement when gas is released if cruise is still ON
-      ret.cruiseState.enabled = cruise_raw and self.cruise_double_tap_active
-    else:
-      # Single-tap engagement (immediate engagement when cruise is pressed)
-      ret.cruiseState.enabled = cruise_raw
+    # cruiseState.enabled always reflects raw car state (must match panda safety)
+    # blockPcmEnable prevents openpilot engagement until double-tap detected
+    ret.cruiseState.enabled = cruise_raw
+    ret.blockPcmEnable = use_double_tap and not self.cruise_double_tap_active
 
     self.cruise_enabled_prev = cruise_raw
     self.gas_pressed_prev = ret.gasPressed
-
-    #ret.cruiseState.enabled = cruise_raw and not ret.gasPressed # No more double-tap detection, uncomment if needed
     ret.cruiseState.available = True  # TODO: Determine actual availability
     ret.cruiseState.speed = 0  # TODO: Find cruise set speed (not required for lateral control)
     ret.cruiseState.nonAdaptive = False
