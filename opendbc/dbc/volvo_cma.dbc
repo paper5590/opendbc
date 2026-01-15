@@ -160,15 +160,13 @@ BO_ 128 GEAR_POSITION: 8 XXX
  SG_ NEW_SIGNAL_5 : 63|1@0+ (1,0) [0|1] "" XXX
 
 BO_ 144 LCA_4: 8 XXX
- SG_ BYTE_1 : 7|8@0+ (1,0) [0|16383] "" XXX
+ SG_ BYTE_0 : 7|8@0+ (1,0) [0|16383] "" XXX
  SG_ LCA_ENABLE : 9|2@0+ (1,0) [0|3] "" XXX
  SG_ BYTE_1_FLAGS : 11|2@0+ (1,0) [0|3] "" XXX
  SG_ BYTE_1_NIBBLE_HI : 15|4@0+ (1,0) [0|63] "" XXX
- SG_ BYTE_2 : 23|8@0+ (1,0) [0|255] "" XXX
- SG_ BYTE_3 : 31|8@0+ (1,0) [0|255] "" XXX
- SG_ LCA_4_CURVE_RIGHT : 39|8@0+ (1,0) [0|255] "" XXX
- SG_ BYTE_5 : 47|8@0- (1,0) [0|255] "" XXX
- SG_ BYTE_6 : 48|8@1+ (1,0) [0|255] "" XXX
+ SG_ BYTE_2_3 : 23|16@0- (1,0) [0|65535] "" XXX
+ SG_ YAW_RATE : 39|16@0- (1,0) [0|65535] "" XXX
+ SG_ BYTE_6 : 55|8@0+ (1,0) [0|255] "" XXX
  SG_ BYTE_7_NIBBLE_LO : 59|4@0+ (1,0) [0|15] "" XXX
  SG_ BYTE_7_NIBBLE_HI : 60|4@1+ (1,0) [0|15] "" XXX
 
@@ -244,6 +242,4 @@ CM_ SG_ 103 LCA_TURN_BITS "Two-byte torque encoding (high byte). Left: 128->134 
 CM_ SG_ 103 LCA_5_STEER "Two-byte torque encoding (low byte). Left: 0->255 (wraps at boundary), Right: 255->0 (wraps at boundary)";
 CM_ SG_ 104 WHEEL_SPEED_3 "Possible Rear Left (RR)";
 CM_ SG_ 104 WHEEL_SPEED_4 "Possibe Rear Right (RR)";
-CM_ SG_ 144 LCA_4_CURVE_RIGHT "Curve  URVE_RIGHT 1:1";
-CM_ SG_ 144 BYTE_5 "Seems to increase/correlate on curves, even when LCA off";
 CM_ SG_ 592 ACCELERATOR_PEDAL_POS "Full gas ~200; Idle ~20";

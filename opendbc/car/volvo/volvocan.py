@@ -1,5 +1,5 @@
 import random
-from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_4_message, checksum_lca_5_message
+from opendbc.car.volvo.helpers import checksum_lca_2_message, checksum_2_0x69_message, checksum_1_pscm_related_message, checksum_2_pscm_related_message, checksum_lca_5_message
 from opendbc.car.volvo.lca_encoder import LCATargetAngleEncoder
 from opendbc.car.carlog import carlog
 
@@ -417,7 +417,7 @@ def create_pscm_related_message(packer, lat_active: bool, stock_lca_engaged: boo
     values['CHECKSUM_1'] = checksum_1_pscm_related_message(b1, b2)
   return packer.make_can_msg('PSCM_RELATED', 0, values)
 
-def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_curve_right: int,
+def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict,
                          overrides: dict | None = None):
   """
   Create LCA_4 (0x90) message to maintain Pilot Assist state when openpilot is active.
@@ -436,7 +436,6 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_curve_
     packer: CAN packer instance
     lat_active: Whether lateral control is active
     msg_lca_4: Dictionary containing LCA_4 message values from car
-    lca_4_curve_right: Pre-computed curve right value (0 or 255) with hysteresis applied
     overrides: Optional dict of signal overrides (keys are UPPERCASE DBC signal names)
 
   Returns:
@@ -448,14 +447,12 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_curve_
 
   # When lat_active, force LCA_ENABLE to 3 (PA ON state)
   values = {
-    'BYTE_1': msg_lca_4['BYTE_1'],
+    'BYTE_0': msg_lca_4['BYTE_0'],
     'LCA_ENABLE': 3,  # Force bits 0-1 to 1 (value=3 means both bits set)
     'BYTE_1_FLAGS': msg_lca_4['BYTE_1_FLAGS'],
     'BYTE_1_NIBBLE_HI': msg_lca_4['BYTE_1_NIBBLE_HI'],
-    'BYTE_2': msg_lca_4['BYTE_2'],
-    'BYTE_3': msg_lca_4['BYTE_3'],
-    'LCA_4_CURVE_RIGHT': lca_4_curve_right,  # Pre-computed with hysteresis in carcontroller
-    'BYTE_5': msg_lca_4['BYTE_5'], # TODO
+    'BYTE_2_3': msg_lca_4['BYTE_2_3'],
+    'YAW_RATE': msg_lca_4['YAW_RATE'],
     'BYTE_6': msg_lca_4['BYTE_6'],
     'BYTE_7_NIBBLE_LO': msg_lca_4['BYTE_7_NIBBLE_LO'],
     'BYTE_7_NIBBLE_HI': msg_lca_4['BYTE_7_NIBBLE_HI'],
@@ -465,14 +462,5 @@ def create_lca_4_message(packer, lat_active: bool, msg_lca_4: dict, lca_4_curve_
   if overrides:
     for key, val in overrides.items():
       values[key] = val
-
-  # TODO: Add checksum calculation when checksum function is implemented
-  # If message has a checksum signal, it would be calculated here like:
-  # values['CHECKSUM'] = checksum_lca_4_message(...)
-
-  # TODO: Add checksum validation when not active (once checksum is known)
-  # if not lat_active and 'CHECKSUM' in msg_lca_4:
-  #   if values['CHECKSUM'] != msg_lca_4['CHECKSUM']:
-  #     carlog.warning("[volvocan.py] LCA_4 CHECKSUM mismatch")
 
   return packer.make_can_msg('LCA_4', 2, values)

@@ -164,23 +164,6 @@ def checksum_2_pscm_related_message(b2):
   return lut.get(b2, 0)
 
 
-def checksum_lca_4_message(*args) -> int:
-  """
-  Placeholder for LCA_4 (0x90) checksum calculation.
-
-  TODO: Implementation will be provided after checksum analysis is complete.
-  For now, returns 0 as a placeholder.
-
-  Args:
-      *args: Byte values needed for checksum calculation (TBD)
-
-  Returns:
-      Checksum byte (0-255)
-  """
-  # Placeholder - will be replaced with actual checksum algorithm
-  return 0
-
-
 class LCA3CounterSync:
   """
   Best-effort pattern synchronization for LCA_3 COUNTER_1.
