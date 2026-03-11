@@ -64,7 +64,8 @@ class CAR(Platforms):
     ),
   )
 
-  POLESTAR_2 = VolvoCMAPlatformConfig(
+  # Polestar 2 is technically CMA, but appears to use SPA DBC for CAN 1 bus
+  POLESTAR_2 = VolvoSPAPlatformConfig(
     [VolvoCarDocs("Polestar 2 2020+")],
     CarSpecs(
       mass=2123,
