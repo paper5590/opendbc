@@ -2,8 +2,11 @@ from opendbc.car import structs, get_safety_config
 from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.volvo.carcontroller import CarController
 from opendbc.car.volvo.carstate import CarState
+from opendbc.car.volvo.values import VolvoSPAPlatformConfig, CAR
 
 TransmissionType = structs.CarParams.TransmissionType
+
+VOLVO_FLAG_SPA = 1
 
 
 class CarInterface(CarInterfaceBase):
@@ -14,7 +17,10 @@ class CarInterface(CarInterfaceBase):
   def _get_params(ret: structs.CarParams, candidate, fingerprint, car_fw, alpha_long, is_release, docs) -> structs.CarParams:
     ret.brand = 'volvo'
 
-    ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.volvo)]
+    safety_param = 0
+    if isinstance(CAR(candidate).config, VolvoSPAPlatformConfig):
+      safety_param = VOLVO_FLAG_SPA
+    ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.volvo, safety_param)]
     #ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.noOutput)]
 
     ret.dashcamOnly = False
