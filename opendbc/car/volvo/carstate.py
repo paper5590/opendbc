@@ -1,7 +1,7 @@
 from opendbc.car import structs, Bus
 from opendbc.can.parser import CANParser
 from opendbc.car.common.conversions import Conversions as CV
-from opendbc.car.volvo.values import DBC, CarControllerParams
+from opendbc.car.volvo.values import DBC, CarControllerParams, VolvoSPAPlatformConfig, CAR
 from opendbc.car.interfaces import CarStateBase
 
 GearShifter = structs.CarState.GearShifter
@@ -11,6 +11,7 @@ TransmissionType = structs.CarParams.TransmissionType
 class CarState(CarStateBase):
   def __init__(self, CP):
     super().__init__(CP)
+    self.is_spa = isinstance(CAR(CP.carFingerprint).config, VolvoSPAPlatformConfig)
     self.cruise_enabled_prev = False
     self.cruise_last_disabled_frame = 0
     self.cruise_double_tap_active = False
@@ -69,7 +70,12 @@ class CarState(CarStateBase):
     self.eps_active = True  # Assume EPS is active for now
 
     # cruise - double-tap detection (on-off-on within 500ms/50 frames / 1000ms/100 frames)
-    cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 or cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC"] == 1
+    if self.is_spa:
+      # SPA: byte 1 bits 0-6 are non-zero when cruise is active (bit 7 is idle flag)
+      cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_SPA_ENABLED"] > 0
+    else:
+      # CMA: two separate boolean signals
+      cruise_raw = cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED"] == 1 or cp_pt.vl["BUS1_CRUISE_CONTROL"]["CRUISE_CONTROL_ENABLED_IDLE_TRAFFIC"] == 1
 
     # Check if double-tap cruise feature is enabled (bit 6 of alternativeExperience)
     use_double_tap = bool(self.CP.alternativeExperience & 64)
