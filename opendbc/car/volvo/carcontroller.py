@@ -1,3 +1,5 @@
+import numpy as np
+
 from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.interfaces import CarControllerBase
@@ -61,6 +63,14 @@ class CarController(CarControllerBase):
     if self.frame % CarControllerParams.STEER_STEP == 0:  # 100 Hz
       # Get desired steering angle from controlsd (LatControlAngle)
       apply_angle = actuators.steeringAngleDeg  # degrees
+
+      # Cap |commanded - actual| to bound EPS fight torque during driver override.
+      # In normal driving the gap stays well under MAX_ERR_DEG so this is a no-op.
+      apply_angle = float(np.clip(
+        apply_angle,
+        CS.out.steeringAngleDeg - CarControllerParams.MAX_ERR_DEG,
+        CS.out.steeringAngleDeg + CarControllerParams.MAX_ERR_DEG,
+      ))
 
       if not CC.latActive:
         apply_angle = CS.out.steeringAngleDeg  # Use current angle when inactive

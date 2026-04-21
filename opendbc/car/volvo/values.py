@@ -12,6 +12,13 @@ Ecu = CarParams.Ecu
 class CarControllerParams:
   STEER_STEP = 1  # 100 Hz LCA command frequency (controlsd runs at 100 Hz)
 
+  # Max absolute error between commanded and actual steering angle. Bounds EPS
+  # fight torque during driver override: driver torque needed scales ~linearly
+  # with |cmd - actual|, so capping the gap caps the driver effort. 6° matches
+  # stock Pilot Assist's observed steady-state override gap.
+  # See docs/plans/2026-04-21-override-softening-investigation.md.
+  MAX_ERR_DEG = 6.0
+
   # Angle limits for rate limiting
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
     540, # deg - 1.5 turns to lock
