@@ -17,7 +17,8 @@ class CarControllerParams:
   # with |cmd - actual|, so capping the gap caps the driver effort. 6° matches
   # stock Pilot Assist's observed steady-state override gap.
   # See docs/plans/2026-04-21-override-softening-investigation.md.
-  MAX_ERR_DEG = 6.0
+  #MAX_ERR_DEG = 6.0
+  MAX_ERR_DEG = 3.0
 
   # Angle limits for rate limiting
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
