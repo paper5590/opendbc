@@ -59,6 +59,13 @@ class CarControllerParams:
   LCA_AUTH_LIGHT_RISE_DELTA = 1.0      # min per-frame increase in |drv| to count as rising contact
   LCA_AUTH_LIGHT_HOLD_FRAMES = 15      # ~150 ms of yield on fresh light contact
   LCA_AUTH_LIGHT_COOLDOWN_FRAMES = 30  # ~300 ms quiet-time on real_override before light contact re-arms
+  # Hands-off gate: only treat a rising-edge as "fresh contact" if the driver
+  # was demonstrably hands-off (filtered |drv| below HANDS_OFF_THRESH) for at
+  # least HANDS_OFF_FRAMES first. Suppresses haptic-ack firings during
+  # continuous co-steering — e.g. a lane change where the user's pressure
+  # changes direction without ever lifting their hands from the wheel.
+  LCA_AUTH_HANDS_OFF_THRESH = 1.0      # filtered |drv| below this counts as "hands off"
+  LCA_AUTH_HANDS_OFF_FRAMES = 100      # ~1 s of hands-off before re-contact is "fresh"
   # Yield-arm plateau scales with driver-torque magnitude so brief strong presses
   # (potholes, lane corrections) get full yield while light sustained pressure
   # only gets a soft yield. yield_signed = YIELD_BASE − YIELD_SLOPE *

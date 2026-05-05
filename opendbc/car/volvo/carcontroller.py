@@ -63,6 +63,12 @@ class CarController(CarControllerBase):
     # unit driver-torque jitter that would otherwise propagate (~10x amplified
     # via YIELD_SLOPE) into envelope ripple felt at the wheel.
     self.lca_auth_drv_mag_filt = 0.0
+    # Hands-off gate: counter of consecutive frames the LP-filtered |drv| has
+    # stayed below HANDS_OFF_THRESH. Used to qualify "fresh contact" so the
+    # haptic-ack only fires when the driver actually re-touched the wheel
+    # after a hands-off stretch — not on every pressure-change rising edge
+    # during continuous engagement (the source of remaining lane-change ripple).
+    self.lca_auth_drv_off_frames = 1000  # large initial → very first contact still fires
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -125,6 +131,13 @@ class CarController(CarControllerBase):
       # envelope ripple via the YIELD_SLOPE multiplier.
       self.lca_auth_drv_mag_filt = ((1.0 - P.LCA_AUTH_YIELD_LP_ALPHA) * self.lca_auth_drv_mag_filt
                                     + P.LCA_AUTH_YIELD_LP_ALPHA * drv_mag)
+      # Hands-off counter: ticks up while filtered |drv| is essentially zero,
+      # resets when any contact is detected. Used to gate haptic-ack so it
+      # only fires after a real hands-off stretch (not during continuous press).
+      if self.lca_auth_drv_mag_filt < P.LCA_AUTH_HANDS_OFF_THRESH:
+        self.lca_auth_drv_off_frames += 1
+      else:
+        self.lca_auth_drv_off_frames = 0
       # Hysteretic override latch — enter at ENTER, hold until drv drops below
       # EXIT. Eliminates ~10 Hz envelope flapping when |drv| hovers near a
       # single threshold during sustained co-steering.
@@ -141,13 +154,17 @@ class CarController(CarControllerBase):
       else:
         self.lca_auth_real_off_frames += 1
       # Per-frame rising edge into the "light contact" zone arms a brief-yield
-      # window for haptic acknowledgment of hand-on-wheel. Suppressed while
-      # the window is already active OR real_override has been off less than
-      # LIGHT_COOLDOWN_FRAMES (i.e., user is actively co-steering).
+      # window for haptic acknowledgment of hand-on-wheel. Suppressed unless:
+      #   - the window isn't already active, AND
+      #   - real_override has been off for ≥ LIGHT_COOLDOWN_FRAMES, AND
+      #   - the driver was hands-off for ≥ HANDS_OFF_FRAMES first (gate
+      #     ensures we only ack genuine fresh contact, not pressure-change
+      #     rising edges during continuous engagement)
       if (drv_mag > P.LCA_AUTH_LIGHT_THRESH and
           drv_rate > P.LCA_AUTH_LIGHT_RISE_DELTA and
           self.lca_auth_light_frames == 0 and
-          self.lca_auth_real_off_frames > P.LCA_AUTH_LIGHT_COOLDOWN_FRAMES):
+          self.lca_auth_real_off_frames > P.LCA_AUTH_LIGHT_COOLDOWN_FRAMES and
+          self.lca_auth_drv_off_frames > P.LCA_AUTH_HANDS_OFF_FRAMES):
         self.lca_auth_light_frames = P.LCA_AUTH_LIGHT_HOLD_FRAMES
       else:
         self.lca_auth_light_frames = max(0, self.lca_auth_light_frames - 1)
@@ -166,6 +183,7 @@ class CarController(CarControllerBase):
         self.lca_auth_override_active = False
         self.lca_auth_drv_mag_filt = 0.0
         self.lca_auth_real_off_frames = 1000
+        self.lca_auth_drv_off_frames = 1000
       elif overriding:
         if self.lca_auth_pos > P.LCA_AUTH_SPLIT or -self.lca_auth_neg > P.LCA_AUTH_SPLIT:
           # Symmetric collapse phase: both arms shrink toward ±SPLIT
