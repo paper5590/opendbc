@@ -20,68 +20,38 @@ class CarControllerParams:
   #MAX_ERR_DEG = 6.0
   MAX_ERR_DEG = 3.0
 
-  # LCA torque-authority envelope, modeled after stock Pilot Assist behavior.
-  # LCA_STEER_LOOSELY (positive arm) and LCA_STEER_LOOSELY_INV (negative arm)
-  # form a directional envelope that PSCM applies to its EPS torque. Stock PA:
-  #  - holds both arms at saturation (±LCA_AUTH_MAX) when no driver torque
-  #  - on driver override, collapses both arms symmetrically at COLLAPSE_RATE
-  #    until envelope reaches ~±LCA_AUTH_SPLIT, then splits asymmetrically:
-  #    the arm matching driver direction (yielding) settles at ±PLATEAU_YIELD,
-  #    the counter arm holds at ±PLATEAU_COUNTER (yield is shallower than counter)
-  #  - rebuilds at REBUILD_RATE after release (~3 s back to saturation)
-  # See route_analysis/lca_override_mechanism.md for the data behind these.
-  LCA_AUTH_MAX = 614              # signal saturation
-  LCA_AUTH_PLATEAU_COUNTER = 130  # counter-arm magnitude during sustained override
-  # Override trigger thresholds on |CS.out.steeringTorque| (op-convention raw
-  # units, mirror of DRIVER_INPUT). Must be ABOVE the resting-hand noise floor
-  # (CS.steeringPressed uses |raw|>2 as a sensitive DM-fallback floor and does
-  # NOT indicate override intent — don't use it for envelope triggering).
-  # Hysteresis: enter override at ENTER, exit at EXIT (< ENTER) to prevent the
-  # envelope flapping between collapse and rebuild when driver torque hovers
-  # near a single threshold (was causing ~10 Hz EPS-torque ripple in lane
-  # changes when driver applied 6-8 raw to "ride along" with op).
-  LCA_AUTH_OVERRIDE_ENTER = 7
-  LCA_AUTH_OVERRIDE_EXIT = 4
-  # "Light contact" / haptic-acknowledgment region. When |drv| crosses into
-  # [LIGHT_THRESH, OVERRIDE_THRESH] from below, briefly collapse the envelope
-  # for LIGHT_HOLD_FRAMES (a haptic confirmation of hand-on-wheel detection),
-  # then rebuild even while the contact persists. Prevents the driver from
-  # needing to sustain force just to feel that the system noticed them — helps
-  # with hand-fatigue / RSI.
-  # Rising edge detected via per-frame derivative; the brief-yield window does
-  # NOT re-arm while still active, so a steady elevated torque only triggers
-  # one yield and then the envelope rebuilds.
-  # Cooldown: light_collapse only fires when real_override has been off for
-  # LIGHT_COOLDOWN_FRAMES — suppresses repeated firings during active
-  # co-steering (lane changes), where |drv| oscillates and would otherwise
-  # re-arm the haptic-ack window each time, causing felt ripple.
-  LCA_AUTH_LIGHT_THRESH = 3            # min |drv| to consider as contact
-  LCA_AUTH_LIGHT_RISE_DELTA = 1.0      # min per-frame increase in |drv| to count as rising contact
-  LCA_AUTH_LIGHT_HOLD_FRAMES = 15      # ~150 ms of yield on fresh light contact
-  LCA_AUTH_LIGHT_COOLDOWN_FRAMES = 30  # ~300 ms quiet-time on real_override before light contact re-arms
-  # Hands-off gate: only treat a rising-edge as "fresh contact" if the driver
-  # was demonstrably hands-off (filtered |drv| below HANDS_OFF_THRESH) for at
-  # least HANDS_OFF_FRAMES first. Suppresses haptic-ack firings during
-  # continuous co-steering — e.g. a lane change where the user's pressure
-  # changes direction without ever lifting their hands from the wheel.
-  LCA_AUTH_HANDS_OFF_THRESH = 1.0      # filtered |drv| below this counts as "hands off"
-  LCA_AUTH_HANDS_OFF_FRAMES = 100      # ~1 s of hands-off before re-contact is "fresh"
-  # Yield-arm plateau scales with driver-torque magnitude so brief strong presses
-  # (potholes, lane corrections) get full yield while light sustained pressure
-  # only gets a soft yield. yield_signed = YIELD_BASE − YIELD_SLOPE *
-  # max(0, drv_mag_filt − OVERRIDE_ENTER), clamped to [YIELD_MIN, YIELD_BASE].
-  # At |drv|=7 (just over threshold): yield = +60 (light resistance).
-  # At |drv|=14: yield ≈ -4 (crosses past zero — EPS hands wheel to driver).
-  # drv_mag_filt is a low-pass of |drv| (alpha=0.04, ~250 ms time constant) —
-  # without it, 1-2 unit driver-torque jitter became ~10 unit yield-arm jitter
-  # which PSCM converted to felt ripple at sustained co-steering pressure.
-  LCA_AUTH_YIELD_BASE = 60        # yield-arm magnitude at the override threshold
-  LCA_AUTH_YIELD_SLOPE = 8        # counts of yield reduction per unit |drv torque| above threshold
-  LCA_AUTH_YIELD_MIN = -30        # cap how far past zero the yield arm can go (full hand-over)
-  LCA_AUTH_YIELD_LP_ALPHA = 0.04  # LP-filter coefficient on |drv| for yield calc (~250 ms tau)
-  LCA_AUTH_SPLIT = 200            # symmetric → asymmetric handover
-  LCA_AUTH_REBUILD_RATE = 230     # counts/s (≈ 2.7 s rebuild from 0 to 614)
-  LCA_AUTH_COLLAPSE_RATE = 2500   # counts/s base (scales with |drv|/THRESH for sharper pothole jolts)
+  # LCA torque-authority envelope (signals LCA_STEER_LOOSELY / _INV).
+  # Two-state, error-driven model:
+  #   - BASELINE: not overriding. Authority = ±BASELINE (lower than max so
+  #     openpilot's "rest" state is already easier to push than stock would be).
+  #   - LATCHED: driver is overriding. Authority = ±LATCHED (very light EPS
+  #     counter-torque so even sustained intentional bias is RSI-friendly).
+  #
+  # The latch is driven by the *angle error* |steeringAngle − cmd|, not the
+  # driver-torque magnitude. Error is naturally clean (PSCM sensor is hardware-
+  # filtered) and naturally zero in normal driving — no false-positives from
+  # resting-hand torque jitter, no need for LP filters or rising-edge tricks.
+  #
+  # Latch transitions:
+  #   - Latched immediately when |error| > ERROR_LATCH_THRESH (any frame)
+  #   - Released only after |error| < ERROR_RELEASE_THRESH for at least
+  #     RELEASE_QUIET_FRAMES consecutive frames. Prevents "re-grab" ripple
+  #     during a maneuver where the user briefly relaxes mid-transition.
+  #
+  # Authority slews toward target with asymmetric rate: fast collapse (toward
+  # latched), slow rebuild (toward baseline). Both arms (pos / neg) are kept
+  # symmetric — no directional logic — so there's nothing to flip on
+  # zero-crossings of driver torque.
+  #
+  # See route_analysis/lca_override_mechanism.md for design history.
+  LCA_AUTH_MAX = 614                    # signal saturation cap (clamp on slew)
+  LCA_AUTH_BASELINE = 300               # authority when not overriding (lighter than max)
+  LCA_AUTH_LATCHED = 50                 # authority while latched (very light counter-torque)
+  LCA_AUTH_ERROR_LATCH_THRESH = 1.0     # deg; |angle - cmd| ≥ this → latch
+  LCA_AUTH_ERROR_RELEASE_THRESH = 0.4   # deg; |angle - cmd| ≤ this counts as quiet
+  LCA_AUTH_RELEASE_QUIET_FRAMES = 100   # ~1 s of quiet error before release
+  LCA_AUTH_REBUILD_RATE = 230           # counts/s (slow rebuild — release direction)
+  LCA_AUTH_COLLAPSE_RATE = 2500         # counts/s (fast collapse — latch direction)
 
   # Angle limits for rate limiting
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(

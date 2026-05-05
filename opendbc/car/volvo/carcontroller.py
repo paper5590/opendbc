@@ -40,35 +40,16 @@ class CarController(CarControllerBase):
     self.lca_7_acc = 0  # Bresenham accumulator for 29 Hz
     self.lca_7_last_steer = 0 # used to calculate change in steer from last update
 
-    # LCA torque-authority envelope state. Both arms are persistent across frames.
-    # See CarControllerParams.LCA_AUTH_* and route_analysis/lca_override_mechanism.md.
-    # When lat_active goes True they ramp up from 0 to ±MAX at REBUILD_RATE; on
-    # driver override they collapse at COLLAPSE_RATE (symmetric until SPLIT, then
-    # asymmetric: yielding arm → 0, counter arm holds at ±PLATEAU).
+    # LCA torque-authority envelope state. Two-state error-driven model:
+    #   BASELINE (not latched): authority = ±LCA_AUTH_BASELINE
+    #   LATCHED (driver overriding): authority = ±LCA_AUTH_LATCHED
+    # Latched on |steeringAngle - cmd| > ERROR_LATCH_THRESH; released only
+    # after sustained |error| < ERROR_RELEASE_THRESH for RELEASE_QUIET_FRAMES.
+    # See route_analysis/lca_override_mechanism.md for design history.
     self.lca_auth_pos = 0.0
     self.lca_auth_neg = 0.0
-    # "Light contact" rising-edge detector for haptic-ack on resting hands.
-    # Per-frame |drv| derivative; LIGHT_HOLD_FRAMES counter ticks down while
-    # the brief-yield window is active and does not re-arm during that window.
-    self.lca_auth_drv_prev = 0.0
-    self.lca_auth_light_frames = 0
-    # Frames since real_override was last active — used to gate light_collapse
-    # re-arming during active co-steering (must be > LIGHT_COOLDOWN_FRAMES).
-    self.lca_auth_real_off_frames = 1000  # large initial → light can fire immediately
-    # Override-mode latch with hysteresis (enter at ENTER, exit at EXIT).
-    # Prevents threshold flapping when driver torque hovers near the boundary,
-    # which caused ~10 Hz EPS-torque ripple felt during lane-change overrides.
-    self.lca_auth_override_active = False
-    # LP-filtered |drv| for yield-arm magnitude calculation. Suppresses 1-2
-    # unit driver-torque jitter that would otherwise propagate (~10x amplified
-    # via YIELD_SLOPE) into envelope ripple felt at the wheel.
-    self.lca_auth_drv_mag_filt = 0.0
-    # Hands-off gate: counter of consecutive frames the LP-filtered |drv| has
-    # stayed below HANDS_OFF_THRESH. Used to qualify "fresh contact" so the
-    # haptic-ack only fires when the driver actually re-touched the wheel
-    # after a hands-off stretch — not on every pressure-change rising edge
-    # during continuous engagement (the source of remaining lane-change ripple).
-    self.lca_auth_drv_off_frames = 1000  # large initial → very first contact still fires
+    self.lca_auth_latched = False
+    self.lca_auth_quiet_frames = 0  # frames with |error| ≤ release threshold
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -114,109 +95,58 @@ class CarController(CarControllerBase):
       # No rate limiting initially - apply desired angle directly
       # TODO: Add rate limiting after basic functionality is confirmed
 
-      # Update LCA torque-authority envelope (replicates stock Pilot Assist's
-      # easy-override and bounce-free release). Stock holds both arms at ±614
-      # in steady state; on override the arms collapse to a shifted plateau
-      # (counter arm deeper than yielding arm); rebuilds at +230 c/s.
+      # Update LCA torque-authority envelope.
+      # Latch on angle error (the wheel deviated from where openpilot wants
+      # it — robust override evidence, naturally clean signal). Once latched,
+      # release only after sustained quiet — prevents mid-maneuver re-grab
+      # ripple. Authority slews fast toward the (lower) latched target,
+      # slow toward the (higher) baseline target. Both arms symmetric so
+      # nothing flips on driver-torque sign changes.
       P = CarControllerParams
       DT = 0.01  # 100 Hz
-      # Override trigger uses an explicit |steeringTorque| threshold rather than
-      # CS.steeringPressed, which is a very-sensitive DM-fallback floor (raw>2)
-      # — fires from resting hands alone and is not an override-intent signal.
-      drv_mag = abs(CS.out.steeringTorque)
-      drv_rate = drv_mag - self.lca_auth_drv_prev
-      self.lca_auth_drv_prev = drv_mag
-      # LP filter on |drv| used for yield-arm magnitude — absorbs 1-2 unit
-      # driver-torque jitter that would otherwise propagate into ~10 unit
-      # envelope ripple via the YIELD_SLOPE multiplier.
-      self.lca_auth_drv_mag_filt = ((1.0 - P.LCA_AUTH_YIELD_LP_ALPHA) * self.lca_auth_drv_mag_filt
-                                    + P.LCA_AUTH_YIELD_LP_ALPHA * drv_mag)
-      # Hands-off counter: ticks up while filtered |drv| is essentially zero,
-      # resets when any contact is detected. Used to gate haptic-ack so it
-      # only fires after a real hands-off stretch (not during continuous press).
-      if self.lca_auth_drv_mag_filt < P.LCA_AUTH_HANDS_OFF_THRESH:
-        self.lca_auth_drv_off_frames += 1
+      # Angle error: how far the actual wheel is from where openpilot wants it.
+      # Use the unclipped command (actuators.steeringAngleDeg) — apply_angle
+      # has already been clipped to ±MAX_ERR_DEG, which would mask hard override.
+      err = abs(CS.out.steeringAngleDeg - actuators.steeringAngleDeg)
+      if err > P.LCA_AUTH_ERROR_LATCH_THRESH:
+        self.lca_auth_latched = True
+        self.lca_auth_quiet_frames = 0
+      elif err < P.LCA_AUTH_ERROR_RELEASE_THRESH:
+        self.lca_auth_quiet_frames += 1
+        if self.lca_auth_latched and self.lca_auth_quiet_frames > P.LCA_AUTH_RELEASE_QUIET_FRAMES:
+          self.lca_auth_latched = False
       else:
-        self.lca_auth_drv_off_frames = 0
-      # Hysteretic override latch — enter at ENTER, hold until drv drops below
-      # EXIT. Eliminates ~10 Hz envelope flapping when |drv| hovers near a
-      # single threshold during sustained co-steering.
-      if not self.lca_auth_override_active and drv_mag > P.LCA_AUTH_OVERRIDE_ENTER:
-        self.lca_auth_override_active = True
-      elif self.lca_auth_override_active and drv_mag < P.LCA_AUTH_OVERRIDE_EXIT:
-        self.lca_auth_override_active = False
-      real_override = self.lca_auth_override_active
-      # Track frames since real_override was last active. Used to gate light
-      # contact re-firing — light_collapse must NOT trigger while the driver
-      # is actively co-steering (real_override repeatedly entering/exiting).
-      if real_override:
-        self.lca_auth_real_off_frames = 0
-      else:
-        self.lca_auth_real_off_frames += 1
-      # Per-frame rising edge into the "light contact" zone arms a brief-yield
-      # window for haptic acknowledgment of hand-on-wheel. Suppressed unless:
-      #   - the window isn't already active, AND
-      #   - real_override has been off for ≥ LIGHT_COOLDOWN_FRAMES, AND
-      #   - the driver was hands-off for ≥ HANDS_OFF_FRAMES first (gate
-      #     ensures we only ack genuine fresh contact, not pressure-change
-      #     rising edges during continuous engagement)
-      if (drv_mag > P.LCA_AUTH_LIGHT_THRESH and
-          drv_rate > P.LCA_AUTH_LIGHT_RISE_DELTA and
-          self.lca_auth_light_frames == 0 and
-          self.lca_auth_real_off_frames > P.LCA_AUTH_LIGHT_COOLDOWN_FRAMES and
-          self.lca_auth_drv_off_frames > P.LCA_AUTH_HANDS_OFF_FRAMES):
-        self.lca_auth_light_frames = P.LCA_AUTH_LIGHT_HOLD_FRAMES
-      else:
-        self.lca_auth_light_frames = max(0, self.lca_auth_light_frames - 1)
-      light_collapse = self.lca_auth_light_frames > 0
-      overriding = real_override or light_collapse
-      # Collapse rate scales with driver torque so a sharp pothole jolt drops the
-      # envelope faster than a soft sustained press. Floor at base rate so light
-      # contact still produces a perceptible (but small) dip.
-      collapse_rate = P.LCA_AUTH_COLLAPSE_RATE * max(1.0, drv_mag / float(P.LCA_AUTH_OVERRIDE_ENTER))
-      step = collapse_rate * DT
+        # In deadband (between release and latch thresholds) — hold latch
+        # state and reset the quiet timer so we don't release on flickers.
+        self.lca_auth_quiet_frames = 0
+      # Reset on disengage so we always start at a known good baseline.
       if not lat_active:
         self.lca_auth_pos = 0.0
         self.lca_auth_neg = 0.0
-        self.lca_auth_drv_prev = 0.0
-        self.lca_auth_light_frames = 0
-        self.lca_auth_override_active = False
-        self.lca_auth_drv_mag_filt = 0.0
-        self.lca_auth_real_off_frames = 1000
-        self.lca_auth_drv_off_frames = 1000
-      elif overriding:
-        if self.lca_auth_pos > P.LCA_AUTH_SPLIT or -self.lca_auth_neg > P.LCA_AUTH_SPLIT:
-          # Symmetric collapse phase: both arms shrink toward ±SPLIT
-          self.lca_auth_pos = max(float(P.LCA_AUTH_SPLIT), self.lca_auth_pos - step)
-          self.lca_auth_neg = min(-float(P.LCA_AUTH_SPLIT), self.lca_auth_neg + step)
-        else:
-          # Asymmetric plateau phase. CS.out.steeringTorque > 0 in openpilot
-          # convention = driver pushing right → yields right authority
-          # (LOOSELY/+ arm), retains left (INV/- arm).
-          # Yield arm scales with |drv| above OVERRIDE_THRESH — strong presses
-          # (potholes, hard corrections) cross past zero so EPS hands the wheel
-          # to the driver in their direction.
-          excess = max(0.0, self.lca_auth_drv_mag_filt - float(P.LCA_AUTH_OVERRIDE_ENTER))
-          yield_signed = float(P.LCA_AUTH_YIELD_BASE) - P.LCA_AUTH_YIELD_SLOPE * excess
-          yield_signed = max(float(P.LCA_AUTH_YIELD_MIN), min(yield_signed, float(P.LCA_AUTH_YIELD_BASE)))
-          if CS.out.steeringTorque > 0:  # driver pushing right
-            target_pos = yield_signed                              # yield arm (+ side)
-            target_neg = -float(P.LCA_AUTH_PLATEAU_COUNTER)        # counter arm
-          else:  # driver pushing left (or zero — default to symmetric collapse direction)
-            target_pos = float(P.LCA_AUTH_PLATEAU_COUNTER)         # counter arm
-            target_neg = -yield_signed                             # yield arm (− side)
-          # Drive each arm toward its plateau target at COLLAPSE_RATE
-          self.lca_auth_pos = max(target_pos, self.lca_auth_pos - step) \
-                              if self.lca_auth_pos > target_pos \
-                              else min(target_pos, self.lca_auth_pos + step)
-          self.lca_auth_neg = min(target_neg, self.lca_auth_neg + step) \
-                              if self.lca_auth_neg < target_neg \
-                              else max(target_neg, self.lca_auth_neg - step)
+        self.lca_auth_latched = False
+        self.lca_auth_quiet_frames = 0
       else:
-        # No override → rebuild both arms toward saturation
+        target = float(P.LCA_AUTH_LATCHED if self.lca_auth_latched else P.LCA_AUTH_BASELINE)
+        collapse_step = P.LCA_AUTH_COLLAPSE_RATE * DT
         rebuild_step = P.LCA_AUTH_REBUILD_RATE * DT
-        self.lca_auth_pos = min(float(P.LCA_AUTH_MAX), self.lca_auth_pos + rebuild_step)
-        self.lca_auth_neg = max(-float(P.LCA_AUTH_MAX), self.lca_auth_neg - rebuild_step)
+        # Positive arm slews symmetric in magnitude toward target.
+        if self.lca_auth_pos > target:
+          self.lca_auth_pos = max(target, self.lca_auth_pos - collapse_step)
+        else:
+          self.lca_auth_pos = min(target, self.lca_auth_pos + rebuild_step)
+        # Negative arm: mirror pos in magnitude. Sign of slew depends on
+        # whether |neg| is above or below target — we use the same
+        # asymmetric-rate semantics (fast toward smaller magnitude, slow
+        # toward larger magnitude) as the positive arm.
+        neg_target = -target
+        if self.lca_auth_neg > neg_target:
+          # neg is less negative than target → need to grow magnitude →
+          # REBUILD direction (slow).
+          self.lca_auth_neg = max(neg_target, self.lca_auth_neg - rebuild_step)
+        else:
+          # neg is more negative than target → need to reduce magnitude →
+          # COLLAPSE direction (fast).
+          self.lca_auth_neg = min(neg_target, self.lca_auth_neg + collapse_step)
 
       # LCA - 0x58 - 100 Hz (angle-based)
       lca_overrides = self.liveTestingConfig.get('lca') if self.liveTestingConfig else None
