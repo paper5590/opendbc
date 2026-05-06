@@ -62,12 +62,13 @@ class CarControllerParams:
   LCA_AUTH_DRV_LATCH_THRESH = 1.5         # filtered-|drv| ; (b) combined-trigger path
   LCA_AUTH_ERROR_COMBINED_THRESH = 0.3    # deg; (b) combined-trigger path
   LCA_AUTH_DRV_LP_ALPHA = 0.1             # LP-filter coefficient on |drv| (~100 ms tau at 100 Hz)
-  # Release: BOTH error and filtered-|drv| must be low for QUIET_FRAMES — adds
-  # symmetry with the trigger and prevents releasing while the user is still
-  # applying torque (even if the wheel has already returned toward cmd).
+  # Release: |err| must be small for QUIET_FRAMES. We do NOT also require low
+  # |drv| — a resting hand can keep filtered drv elevated indefinitely without
+  # any actual override (wheel still tracks cmd). What matters is whether the
+  # wheel is where openpilot wants it. If err is quiet, no override is in
+  # progress, regardless of how much torque the resting hand is contributing.
   LCA_AUTH_ERROR_RELEASE_THRESH = 0.4     # deg; |error| ≤ this counts as quiet
-  LCA_AUTH_DRV_RELEASE_THRESH = 1.0       # filtered |drv| ≤ this counts as quiet
-  LCA_AUTH_RELEASE_QUIET_FRAMES = 100     # ~1 s of quiet (both signals) before release
+  LCA_AUTH_RELEASE_QUIET_FRAMES = 100     # ~1 s of err quiet before release
   LCA_AUTH_REBUILD_RATE = 230             # counts/s (slow rebuild — release direction)
   LCA_AUTH_COLLAPSE_RATE = 2500           # counts/s (fast collapse — latch direction)
 
