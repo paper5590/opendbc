@@ -47,11 +47,29 @@ class CarControllerParams:
   LCA_AUTH_MAX = 614                    # signal saturation cap (clamp on slew)
   LCA_AUTH_BASELINE = 614               # authority when not overriding (matches stock for crosswind/disturbance rejection)
   LCA_AUTH_LATCHED = 50                 # authority while latched (very light counter-torque, lighter than stock's ~120 plateau)
-  LCA_AUTH_ERROR_LATCH_THRESH = 1.0     # deg; |angle - cmd| ≥ this → latch
-  LCA_AUTH_ERROR_RELEASE_THRESH = 0.4   # deg; |angle - cmd| ≤ this counts as quiet
-  LCA_AUTH_RELEASE_QUIET_FRAMES = 100   # ~1 s of quiet error before release
-  LCA_AUTH_REBUILD_RATE = 230           # counts/s (slow rebuild — release direction)
-  LCA_AUTH_COLLAPSE_RATE = 2500         # counts/s (fast collapse — latch direction)
+  # Latch triggers on either of two paths (mirrors stock LCA's observed behavior):
+  #   (a) STRONG ERROR: |angle - cmd| ≥ ERROR_LATCH_THRESH alone
+  #       — catches hard overrides where user has clearly moved the wheel
+  #   (b) COMBINED: filtered |drv| ≥ DRV_LATCH_THRESH AND |error| ≥ ERROR_COMBINED_THRESH
+  #       — catches gentle co-steering where the user is applying low driver
+  #       torque (~drv 2-3) AND the wheel has *also* started drifting off-cmd.
+  #       Without (b), initial-push effort at baseline 614 would be stock-level
+  #       firm; with (b), the latch fires at stock-equivalent sensitivity
+  #       (~drv 1.5 sustained for ~150 ms, ~0.3° wheel deviation).
+  # Filtered |drv| uses an LP filter (~100 ms tau) to absorb single-frame
+  # noise spikes without lagging real intent.
+  LCA_AUTH_ERROR_LATCH_THRESH = 1.0       # deg; (a) strong-error path
+  LCA_AUTH_DRV_LATCH_THRESH = 1.5         # filtered-|drv| ; (b) combined-trigger path
+  LCA_AUTH_ERROR_COMBINED_THRESH = 0.3    # deg; (b) combined-trigger path
+  LCA_AUTH_DRV_LP_ALPHA = 0.1             # LP-filter coefficient on |drv| (~100 ms tau at 100 Hz)
+  # Release: BOTH error and filtered-|drv| must be low for QUIET_FRAMES — adds
+  # symmetry with the trigger and prevents releasing while the user is still
+  # applying torque (even if the wheel has already returned toward cmd).
+  LCA_AUTH_ERROR_RELEASE_THRESH = 0.4     # deg; |error| ≤ this counts as quiet
+  LCA_AUTH_DRV_RELEASE_THRESH = 1.0       # filtered |drv| ≤ this counts as quiet
+  LCA_AUTH_RELEASE_QUIET_FRAMES = 100     # ~1 s of quiet (both signals) before release
+  LCA_AUTH_REBUILD_RATE = 230             # counts/s (slow rebuild — release direction)
+  LCA_AUTH_COLLAPSE_RATE = 2500           # counts/s (fast collapse — latch direction)
 
   # Angle limits for rate limiting
   ANGLE_LIMITS: AngleSteeringLimits = AngleSteeringLimits(
