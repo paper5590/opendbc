@@ -45,8 +45,8 @@ class CarControllerParams:
   #
   # See route_analysis/lca_override_mechanism.md for design history.
   LCA_AUTH_MAX = 614                    # signal saturation cap (clamp on slew)
-  LCA_AUTH_BASELINE = 300               # authority when not overriding (lighter than max)
-  LCA_AUTH_LATCHED = 50                 # authority while latched (very light counter-torque)
+  LCA_AUTH_BASELINE = 614               # authority when not overriding (matches stock for crosswind/disturbance rejection)
+  LCA_AUTH_LATCHED = 50                 # authority while latched (very light counter-torque, lighter than stock's ~120 plateau)
   LCA_AUTH_ERROR_LATCH_THRESH = 1.0     # deg; |angle - cmd| ≥ this → latch
   LCA_AUTH_ERROR_RELEASE_THRESH = 0.4   # deg; |angle - cmd| ≤ this counts as quiet
   LCA_AUTH_RELEASE_QUIET_FRAMES = 100   # ~1 s of quiet error before release
