@@ -118,18 +118,14 @@ class CarController(CarControllerBase):
       if strong_error or combined_trigger:
         self.lca_auth_latched = True
         self.lca_auth_quiet_frames = 0
-      elif err < P.LCA_AUTH_ERROR_RELEASE_THRESH:
-        # Wheel is at cmd → not overriding. Doesn't matter whether the
-        # driver's hand is still there contributing torque — if the wheel is
-        # where op wants it, we release. (Earlier design also required
-        # filt_drv low for release, which left the system stuck-latched on
-        # any resting hand whose filtered drv exceeded the release floor.)
+      elif (err < P.LCA_AUTH_ERROR_RELEASE_THRESH and
+            self.lca_auth_drv_filt < P.LCA_AUTH_DRV_RELEASE_THRESH):
         self.lca_auth_quiet_frames += 1
         if self.lca_auth_latched and self.lca_auth_quiet_frames > P.LCA_AUTH_RELEASE_QUIET_FRAMES:
           self.lca_auth_latched = False
       else:
-        # In deadband (between trigger and release error thresholds) — hold
-        # latch state and reset the quiet timer so we don't release on flickers.
+        # In deadband (between trigger and release conditions) — hold latch
+        # state and reset the quiet timer so we don't release on flickers.
         self.lca_auth_quiet_frames = 0
       # Reset on disengage so we always start at a known good baseline.
       if not lat_active:
