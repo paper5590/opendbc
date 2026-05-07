@@ -40,14 +40,13 @@ class CarController(CarControllerBase):
     self.lca_7_acc = 0  # Bresenham accumulator for 29 Hz
     self.lca_7_last_steer = 0 # used to calculate change in steer from last update
 
-    # LCA torque-authority envelope state. Two-state model with stock-like
-    # combined trigger (drv + error) and asymmetric collapse/rebuild rates.
+    # LCA torque-authority envelope state. Two-state model with raw drv+err
+    # trigger and conservative both-quiet release; asymmetric slew rates.
     # See CarControllerParams.LCA_AUTH_* and route_analysis/lca_override_mechanism.md.
     self.lca_auth_pos = 0.0
     self.lca_auth_neg = 0.0
     self.lca_auth_latched = False
-    self.lca_auth_quiet_frames = 0      # frames with both |err| and filt_drv quiet
-    self.lca_auth_drv_filt = 0.0        # LP-filtered |drv| for combined-trigger path
+    self.lca_auth_quiet_frames = 0      # consecutive frames with |drv| and |err| both quiet
 
   def update(self, CC, CS, now_nanos):
     CS.CC_frame = self.frame
@@ -94,15 +93,13 @@ class CarController(CarControllerBase):
       # TODO: Add rate limiting after basic functionality is confirmed
 
       # Update LCA torque-authority envelope.
-      # Stock-like combined trigger: latch on either (a) strong error alone,
-      # or (b) filtered driver torque + small error together. Path (b) catches
-      # gentle co-steering where the user pushes lightly (~drv 1.5 sustained)
-      # and the wheel has *also* started drifting off cmd (~0.3°) — without
-      # this, baseline=614 would require stock-level effort to break out.
-      # Path (a) catches hard overrides where the wheel has clearly moved
-      # regardless of driver-torque magnitude.
-      # Release requires BOTH error and filtered drv to be quiet for >1 s,
-      # symmetric with the combined trigger.
+      # Trigger: latch on |drv| ≥ DRV_LATCH_THRESH OR |err| ≥ ERROR_LATCH_THRESH.
+      # Release: BOTH |drv| < DRV_RELEASE_THRESH AND |err| < ERROR_RELEASE_THRESH
+      # held for >RELEASE_QUIET_FRAMES. The drv release threshold is intentionally
+      # close to (just below) the trigger so it acts as a sanity check; |err| is
+      # the real release signal — wheel back at cmd means override is over.
+      # Trigger is checked every frame including during rebuild, so any new push
+      # or wheel deflection re-latches authority back to LATCHED at COLLAPSE_RATE.
       P = CarControllerParams
       DT = 0.01  # 100 Hz
       # Angle error: how far the actual wheel is from where openpilot wants it.
@@ -110,21 +107,16 @@ class CarController(CarControllerBase):
       # has already been clipped to ±MAX_ERR_DEG, which would mask hard override.
       err = abs(CS.out.steeringAngleDeg - actuators.steeringAngleDeg)
       drv_mag = abs(CS.out.steeringTorque)
-      self.lca_auth_drv_filt = ((1.0 - P.LCA_AUTH_DRV_LP_ALPHA) * self.lca_auth_drv_filt
-                                + P.LCA_AUTH_DRV_LP_ALPHA * drv_mag)
-      strong_error = err > P.LCA_AUTH_ERROR_LATCH_THRESH
-      combined_trigger = (self.lca_auth_drv_filt > P.LCA_AUTH_DRV_LATCH_THRESH and
-                          err > P.LCA_AUTH_ERROR_COMBINED_THRESH)
-      if strong_error or combined_trigger:
+      if drv_mag >= P.LCA_AUTH_DRV_LATCH_THRESH or err >= P.LCA_AUTH_ERROR_LATCH_THRESH:
         self.lca_auth_latched = True
         self.lca_auth_quiet_frames = 0
-      elif (err < P.LCA_AUTH_ERROR_RELEASE_THRESH and
-            self.lca_auth_drv_filt < P.LCA_AUTH_DRV_RELEASE_THRESH):
+      elif (drv_mag < P.LCA_AUTH_DRV_RELEASE_THRESH and
+            err < P.LCA_AUTH_ERROR_RELEASE_THRESH):
         self.lca_auth_quiet_frames += 1
         if self.lca_auth_latched and self.lca_auth_quiet_frames > P.LCA_AUTH_RELEASE_QUIET_FRAMES:
           self.lca_auth_latched = False
       else:
-        # In deadband (between trigger and release conditions) — hold latch
+        # In deadband (between trigger and release thresholds) — hold latch
         # state and reset the quiet timer so we don't release on flickers.
         self.lca_auth_quiet_frames = 0
       # Reset on disengage so we always start at a known good baseline.
@@ -133,7 +125,6 @@ class CarController(CarControllerBase):
         self.lca_auth_neg = 0.0
         self.lca_auth_latched = False
         self.lca_auth_quiet_frames = 0
-        self.lca_auth_drv_filt = 0.0
       else:
         target = float(P.LCA_AUTH_LATCHED if self.lca_auth_latched else P.LCA_AUTH_BASELINE)
         collapse_step = P.LCA_AUTH_COLLAPSE_RATE * DT

@@ -21,53 +21,40 @@ class CarControllerParams:
   MAX_ERR_DEG = 3.0
 
   # LCA torque-authority envelope (signals LCA_STEER_LOOSELY / _INV).
-  # Two-state, error-driven model:
-  #   - BASELINE: not overriding. Authority = ±BASELINE (lower than max so
-  #     openpilot's "rest" state is already easier to push than stock would be).
-  #   - LATCHED: driver is overriding. Authority = ±LATCHED (very light EPS
-  #     counter-torque so even sustained intentional bias is RSI-friendly).
+  # Two-state model with combined drv+err trigger and conservative release:
   #
-  # The latch is driven by the *angle error* |steeringAngle − cmd|, not the
-  # driver-torque magnitude. Error is naturally clean (PSCM sensor is hardware-
-  # filtered) and naturally zero in normal driving — no false-positives from
-  # resting-hand torque jitter, no need for LP filters or rising-edge tricks.
+  # BASELINE: not overriding. Authority = ±BASELINE (full, matches stock for
+  #           proper crosswind/disturbance rejection).
+  # LATCHED:  driver overriding. Authority = ±LATCHED (high enough for EPS to
+  #           still drive the wheel back to cmd after release; low enough
+  #           that the override feel is comparable to stock's ~120 plateau).
   #
-  # Latch transitions:
-  #   - Latched immediately when |error| > ERROR_LATCH_THRESH (any frame)
-  #   - Released only after |error| < ERROR_RELEASE_THRESH for at least
-  #     RELEASE_QUIET_FRAMES consecutive frames. Prevents "re-grab" ripple
-  #     during a maneuver where the user briefly relaxes mid-transition.
+  # Trigger (latch fires on any single frame where ANY of these is true):
+  #   - |drv| >= DRV_LATCH_THRESH (5)   — direct driver-torque trigger
+  #   - |err| >= ERROR_LATCH_THRESH (1°) — wheel deflected off cmd; catches
+  #     mild-pressure cases (e.g. drv~3 mid-rebuild causing wheel to drift)
   #
-  # Authority slews toward target with asymmetric rate: fast collapse (toward
-  # latched), slow rebuild (toward baseline). Both arms (pos / neg) are kept
-  # symmetric — no directional logic — so there's nothing to flip on
-  # zero-crossings of driver torque.
+  # Release (latch releases only after BOTH below hold continuously for
+  # RELEASE_QUIET_FRAMES frames; |err| is the primary release signal,
+  # |drv| condition is a sanity check that the user isn't still pushing):
+  #   - |drv| < DRV_RELEASE_THRESH (4)
+  #   - |err| < ERROR_RELEASE_THRESH (0.4°)
+  #
+  # Both arms (pos / neg) kept symmetric — no directional logic — so nothing
+  # flips on zero-crossings of driver torque. Authority slews fast toward
+  # latched (collapse), slow toward baseline (rebuild). Trigger conditions
+  # are checked every frame including during rebuild, so any new override
+  # interrupts the rebuild and snaps authority back to LATCHED.
   #
   # See route_analysis/lca_override_mechanism.md for design history.
-  LCA_AUTH_MAX = 614                    # signal saturation cap (clamp on slew)
-  LCA_AUTH_BASELINE = 614               # authority when not overriding (matches stock for crosswind/disturbance rejection)
-  LCA_AUTH_LATCHED = 50                 # authority while latched (very light counter-torque, lighter than stock's ~120 plateau)
-  # Latch triggers on either of two paths (mirrors stock LCA's observed behavior):
-  #   (a) STRONG ERROR: |angle - cmd| ≥ ERROR_LATCH_THRESH alone
-  #       — catches hard overrides where user has clearly moved the wheel
-  #   (b) COMBINED: filtered |drv| ≥ DRV_LATCH_THRESH AND |error| ≥ ERROR_COMBINED_THRESH
-  #       — catches gentle co-steering where the user is applying low driver
-  #       torque (~drv 2-3) AND the wheel has *also* started drifting off-cmd.
-  #       Without (b), initial-push effort at baseline 614 would be stock-level
-  #       firm; with (b), the latch fires at stock-equivalent sensitivity
-  #       (~drv 1.5 sustained for ~150 ms, ~0.3° wheel deviation).
-  # Filtered |drv| uses an LP filter (~100 ms tau) to absorb single-frame
-  # noise spikes without lagging real intent.
-  LCA_AUTH_ERROR_LATCH_THRESH = 1.0       # deg; (a) strong-error path
-  LCA_AUTH_DRV_LATCH_THRESH = 1.5         # filtered-|drv| ; (b) combined-trigger path
-  LCA_AUTH_ERROR_COMBINED_THRESH = 0.3    # deg; (b) combined-trigger path
-  LCA_AUTH_DRV_LP_ALPHA = 0.1             # LP-filter coefficient on |drv| (~100 ms tau at 100 Hz)
-  # Release: BOTH error and filtered-|drv| must be low for QUIET_FRAMES — adds
-  # symmetry with the trigger and prevents releasing while the user is still
-  # applying torque (even if the wheel has already returned toward cmd).
-  LCA_AUTH_ERROR_RELEASE_THRESH = 0.4     # deg; |error| ≤ this counts as quiet
-  LCA_AUTH_DRV_RELEASE_THRESH = 1.0       # filtered |drv| ≤ this counts as quiet
-  LCA_AUTH_RELEASE_QUIET_FRAMES = 100     # ~1 s of quiet (both signals) before release
+  LCA_AUTH_MAX = 614                      # signal saturation cap (clamp on slew)
+  LCA_AUTH_BASELINE = 614                 # authority when not overriding (matches stock; full crosswind rejection)
+  LCA_AUTH_LATCHED = 130                  # authority while latched (~stock plateau; enough for EPS to still drive)
+  LCA_AUTH_DRV_LATCH_THRESH = 5           # raw |drv| ≥ this triggers latch
+  LCA_AUTH_ERROR_LATCH_THRESH = 1.0       # deg; |err| ≥ this also triggers latch (catches re-engagement during rebuild)
+  LCA_AUTH_DRV_RELEASE_THRESH = 4         # raw |drv| < this counts as quiet for release (1-unit hysteresis vs trigger)
+  LCA_AUTH_ERROR_RELEASE_THRESH = 0.4     # deg; |err| < this counts as quiet for release
+  LCA_AUTH_RELEASE_QUIET_FRAMES = 100     # ~1 s of both-quiet before release
   LCA_AUTH_REBUILD_RATE = 230             # counts/s (slow rebuild — release direction)
   LCA_AUTH_COLLAPSE_RATE = 2500           # counts/s (fast collapse — latch direction)
 
