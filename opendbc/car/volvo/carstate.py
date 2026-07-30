@@ -7,6 +7,13 @@ from opendbc.car.interfaces import CarStateBase
 GearShifter = structs.CarState.GearShifter
 TransmissionType = structs.CarParams.TransmissionType
 
+# main-bus SPEED (0x60) is raw counts in the DBC; measured against GPS ground speed
+SPEED_TO_MS = 0.003977
+
+# native rest value of ACCELERATOR_PEDAL_POS, per PT DBC (they are different messages)
+GAS_IDLE_CMA = 20
+GAS_IDLE_SPA = 0
+
 
 class CarState(CarStateBase):
   def __init__(self, CP):
@@ -40,13 +47,20 @@ class CarState(CarStateBase):
     ret = structs.CarState()
 
     # car speed
-    # Basic vehicle state from BUS1_SPEED on PT bus
-    ret.vEgoRaw = cp_pt.vl["BUS1_SPEED"]["BUS1_SPEED"]
+    # SPEED on the main bus, not BUS1_SPEED on the PT bus: the main bus is identical
+    # across harnesses, while which car bus lands on PT (bus 1) is not, and the PT DBC
+    # in use depends on the fingerprint. Regressed against GPS ground speed over two
+    # routes on different harnesses: r=0.99989 both, residual sd 0.35-0.40 km/h.
+    ret.vEgoRaw = cp_main.vl["SPEED"]["SPEED"] * SPEED_TO_MS
     ret.vEgo, ret.aEgo = self.update_speed_kf(ret.vEgoRaw)
     ret.standstill = ret.vEgoRaw <= 0.1 # 0.1 m/s
 
     # gas
-    ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > 20+1 # 20 baseline + 1 tolerance
+    # The two ECM_1 messages are different signals on different networks, each with its
+    # own native rest value: the CMA one floors at 20, the SPA one at 0. Compare against
+    # the right idle baseline rather than a shared constant.
+    gas_idle = GAS_IDLE_SPA if self.is_spa else GAS_IDLE_CMA
+    ret.gasPressed = cp_pt.vl["ECM_1"]["ACCELERATOR_PEDAL_POS"] > gas_idle + 1 # + 1 tolerance
 
     # brake
     #ret.brakePressed = bool(cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_A"] or cp_main.vl["LCA_2"]["BRAKE_PEDAL_PRESSED_B"])
