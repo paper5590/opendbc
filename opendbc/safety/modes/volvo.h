@@ -35,7 +35,7 @@
 
 // SPEED (0x60) is raw counts in the DBC. Measured against GPS ground speed on two
 // harnesses: implied LSB 0.0039736 and 0.0039792 m/s.
-#define VOLVO_SPEED_TO_MS 0.003977f
+#define VOLVO_SPEED_TO_MS 0.003977
 
 
 // CAN bus definitions for Volvo
@@ -69,7 +69,7 @@ static void volvo_rx_hook(const CANPacket_t *msg) {
     // DBC: SG_ SPEED : 6|15@0+ (1,0) - raw counts, scaled here
     if (msg->addr == VOLVO_SPEED) {
       uint16_t speed_raw = ((msg->data[0] & 0x7FU) << 8) | msg->data[1];
-      float speed = (float)speed_raw * VOLVO_SPEED_TO_MS;
+      float speed = speed_raw * VOLVO_SPEED_TO_MS;
       vehicle_moving = speed > 0.1;
       UPDATE_VEHICLE_SPEED(speed);
     }
