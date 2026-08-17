@@ -50,26 +50,25 @@ def create_lca_message(packer, lat_active: bool, apply_angle: float, msg_lca: di
 
   return packer.make_can_msg('LCA', 2, values)
 
-def create_pscm_message(packer, lat_active: bool, msg_pscm: dict, frame: int, spoof_pa_hands_on_wheel: bool):
+def create_pscm_message(packer, msg_pscm: dict, spoof_hands_on_wheel: bool):
   values = {
     'PSCM_ANGLE_SENSOR': msg_pscm['PSCM_ANGLE_SENSOR'],
     'BIT_0': msg_pscm['BIT_0'],
-    'HANDS_ON_STEERING_WHEEL_A': msg_pscm['HANDS_ON_STEERING_WHEEL_A'],
-    'HANDS_ON_STEERING_WHEEL_B': msg_pscm['HANDS_ON_STEERING_WHEEL_B'],
+    'HANDS_ON_WHEEL_ALERT_TIMER': msg_pscm['HANDS_ON_WHEEL_ALERT_TIMER'],
+    'HANDS_ON_WHEEL_ALERT_FLAGS': msg_pscm['HANDS_ON_WHEEL_ALERT_FLAGS'],
+    'PADDING': msg_pscm['PADDING'],
+    'FAST_TIMER': msg_pscm['FAST_TIMER'],
+    'NEW_SIGNAL_3': msg_pscm['NEW_SIGNAL_3'],
+    'NEW_SIGNAL_4': msg_pscm['NEW_SIGNAL_4'],
+    'NEW_SIGNAL_5': msg_pscm['NEW_SIGNAL_5'],
     'BYTE_4': msg_pscm['BYTE_4'],
     'DRIVER_INPUT_DEVIATION': msg_pscm['DRIVER_INPUT_DEVIATION'],
-    'BYTE_6': msg_pscm['BYTE_6'],
     'BYTE_7': msg_pscm['BYTE_7'],
   }
 
-  # Spoof hands on wheel when:
-  # - lat_active (openpilot is steering), OR
-  # - spoof_pa_hands_on_wheel (Pilot Assist is engaged AND toggle enabled)
-  if lat_active or spoof_pa_hands_on_wheel:
-    #values['DRIVER_INPUT_DEVIATION'] = -1 # Spoof hands on steering wheel
-    #values['DRIVER_INPUT_DEVIATION'] = 1 if frame % 2 == 0 else 0
-    values['HANDS_ON_STEERING_WHEEL_B'] = 186 if frame % 2 == 0 else 154 # msg_pscm['HANDS_ON_STEERING_WHEEL_B']
-    values['HANDS_ON_STEERING_WHEEL_A'] = 195 if frame % 2 == 0 else 249 # msg_pscm['HANDS_ON_STEERING_WHEEL_A']
+  if spoof_hands_on_wheel:
+    values['HANDS_ON_WHEEL_ALERT_FLAGS'] = 3  # follow timer
+    values['HANDS_ON_WHEEL_ALERT_TIMER'] = 0  # seconds since last hands on wheel
 
   return packer.make_can_msg('PSCM', 0, values)
 

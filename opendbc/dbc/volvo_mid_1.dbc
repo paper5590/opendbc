@@ -11,11 +11,15 @@ BO_ 21 DRIVER_INPUT: 8 XXX
 BO_ 22 PSCM: 8 XXX
  SG_ PSCM_ANGLE_SENSOR : 6|15@0- (0.05596,0) [-916|916] "º" XXX
  SG_ BIT_0 : 7|1@0+ (1,0) [0|1] "" XXX
- SG_ HANDS_ON_STEERING_WHEEL_A : 23|8@0+ (1,0) [0|255] "" XXX
- SG_ HANDS_ON_STEERING_WHEEL_B : 31|8@0+ (1,0) [0|255] "" XXX
+ SG_ HANDS_ON_WHEEL_ALERT_FLAGS : 17|2@0+ (1,0) [0|3] "" XXX
+ SG_ HANDS_ON_WHEEL_ALERT_TIMER : 21|4@0+ (1,0) [0|15] "" XXX
+ SG_ PADDING : 23|2@0+ (1,0) [0|3] "" XXX
+ SG_ FAST_TIMER : 27|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_5 : 28|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_3 : 29|1@0+ (1,0) [0|1] "" XXX
+ SG_ NEW_SIGNAL_4 : 31|2@0+ (1,0) [0|3] "" XXX
  SG_ BYTE_4 : 39|8@0+ (1,0) [0|255] "" XXX
- SG_ DRIVER_INPUT_DEVIATION : 47|8@0- (1,0) [-128|127] "" XXX
- SG_ BYTE_6 : 55|8@0+ (1,0) [0|255] "" XXX
+ SG_ DRIVER_INPUT_DEVIATION : 47|16@0- (1,0) [0|65535] "" XXX
  SG_ BYTE_7 : 63|8@0+ (1,0) [0|255] "" XXX
 
 BO_ 23 PSCM_RELATED: 8 XXX
@@ -177,6 +181,8 @@ BO_ 1336 NEW_MSG_538: 8 XXX
  SG_ NEW_SIGNAL_3 : 24|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_2 : 29|1@0+ (1,0) [0|1] "" XXX
 
+CM_ SG_ 22 HANDS_ON_WHEEL_ALERT_TIMER "0: hands on wheel; 1-13: counts up 1 per second; 14: hands on wheel warning displayed; 15: hands on wheel alert displayed";
+CM_ SG_ 22 FAST_TIMER "unknown purpose or what it's doing";
 CM_ BO_ 23 "Might be related to PSCM 0x16";
 CM_ SG_ 87 LCA_ACCEPT_COMMANDS_RELATED "Goes to 15 when actively operating LCA";
 CM_ SG_ 87 LCA_ACCEPT_COMMANDS_INV "Goes to 0 when PSCM allowed to receive LCA commands";
@@ -185,4 +191,5 @@ CM_ SG_ 103 WHEEL_SPEED_1 "Possible Front Left  (FL)";
 CM_ SG_ 103 WHEEL_SPEED_2 "Possible Front Right (FR)";
 CM_ SG_ 105 ESC_ACTUATING "Goes to 1 in combination with ESC_ELIGIBLE when ESC is actively actuating";
 CM_ SG_ 105 ESC_ELIGIBLE "Goes to 1 on e.g. speed bump, but doesn't trigger any intervention";
+VAL_ 22 HANDS_ON_WHEEL_ALERT_FLAGS 0 "LCA not active" 1 "Alert Active" 3 "Follow Timer";
 VAL_ 128 GEAR_POSITION 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" 4 "B-Mode";

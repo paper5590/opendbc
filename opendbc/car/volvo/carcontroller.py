@@ -3,7 +3,6 @@ import numpy as np
 from opendbc.can.packer import CANPacker
 from opendbc.car import Bus
 from opendbc.car.interfaces import CarControllerBase
-from opendbc.car.volvo.helpers import LCA3CounterSync
 from opendbc.car.volvo.live_testing import LiveTestingManager
 from opendbc.car.volvo.volvocan import create_lca_message, create_pscm_message, create_lca_3_message, create_lca_2_message, create_lca_4_message, create_lca_5_message, create_lca_6_message, create_lca_7_message, create_speed_message, create_speed_2_message, create_speed_3_message, create_0x1a_message, create_gear_position_message, create_egsm_message, create_pscm_related_message
 from opendbc.car.volvo.values import CarControllerParams
@@ -29,8 +28,8 @@ class CarController(CarControllerBase):
     # Counter management for PSCM_RELATED
     self.pscm_related_counter = None  # Will grab initial value from CarState
 
-    # Counter management for LCA_3 (pattern-based)
-    self.lca_3_counter_sync = LCA3CounterSync()
+    # Counter management for LCA_3
+    self.lca_3_counter = None  # Will grab initial value from CarState
 
     # Counter management for LCA_5 (formerly SPEED_1)
     self.lca_5_counter = None  # Will grab initial value from CarState
@@ -210,9 +209,10 @@ class CarController(CarControllerBase):
 
       # Check if PA hands-on-wheel spoof toggle is enabled (bit 7 of alternativeExperience)
       spoof_pa_hands_enabled = bool(self.CP.alternativeExperience & 128)
-      spoof_pa_hands = CS.pilot_assist_engaged and spoof_pa_hands_enabled
+      spoof_hands_on_wheel = lat_active or (CS.pilot_assist_engaged and spoof_pa_hands_enabled)
+
       # PSCM (bus 2 -> 0) - 0x16 - 100 Hz
-      can_sends.append(create_pscm_message(self.packer, lat_active, CS.msg_pscm, self.frame, spoof_pa_hands))
+      can_sends.append(create_pscm_message(self.packer, CS.msg_pscm, spoof_hands_on_wheel))
       # EGSM - 0x45 - 100 Hz
       #can_sends.append(create_egsm_message(self.packer, CS.msg_egsm))
 
@@ -232,11 +232,10 @@ class CarController(CarControllerBase):
     # 0x57 at ~66.67 Hz: send on 2 out of every 3 frames
     # Pattern: send on frame % 3 == 0 or 2, skip when frame % 3 == 1
     if self.frame % 3 != 1:  # → 2/3 * 100 Hz = 66.67 Hz
-      # Update counter with observed value, get counter to send
-      counter, is_synced = self.lca_3_counter_sync.update(CS.msg_lca_3['COUNTER_1'])
-      can_sends.append(create_lca_3_message(self.packer, lat_active, apply_angle, CS.msg_lca_3, counter))
-      #can_sends.append(create_0x1a_message(self.packer, CS.msg_0x1a))
-      pass
+      if self.lca_3_counter is None:
+        self.lca_3_counter = CS.msg_lca_3['COUNTER_1']
+      self.lca_3_counter = (self.lca_3_counter + 1) % 4
+      can_sends.append(create_lca_3_message(self.packer, lat_active, apply_angle, CS.msg_lca_3, self.lca_3_counter))
 
     # SPEED messages - 0x60, 0x68 - 50 Hz
     if self.frame % 2 == 0: # 50 Hz
