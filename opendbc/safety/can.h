@@ -5,6 +5,11 @@ static const unsigned char dlc_to_len[] = {0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 1
 #define CANPACKET_HEAD_SIZE 6U  // non-data portion of CANPacket_t
 #define CANPACKET_DATA_SIZE_MAX 64U
 
+// restored for the pinned pre-v0.11.0 panda, whose board/main_comms.h still
+// reports it; newer panda derives the ABI version automatically. The packet
+// layout below is byte-identical to when this was 4, so the value still holds.
+#define CAN_PACKET_VERSION 4
+
 typedef struct {
   unsigned char fd : 1;
   unsigned char bus : 3;
