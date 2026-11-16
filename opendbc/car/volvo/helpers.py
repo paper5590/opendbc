@@ -136,27 +136,24 @@ def checksum_2_pscm_related_message(b2):
   """
   Computes checksum #2 (goes in byte[3]) for PSCM-related 0x17 message.
   Depends only on byte[2].
+
+  Each set bit of byte[2] flips a fixed pattern of checksum bits, and the
+  checksum is all of those flips combined (linear over GF(2), same as
+  checksum_1). Solved from the 30 byte[2] values seen on the bus: 0x80..0x8E
+  in normal driving and 0xA0..0xAE, which the rack sends after it resets
+  itself (fault state) until the car is power cycled.
+
+  This replaces a lookup table that covered only 0x80..0x8E and returned 0x00
+  otherwise, so every 0x17 frame forwarded during a rack fault had an invalid
+  checksum. Bits 4 and 6 of byte[2] have never been seen set, so they are
+  assumed to flip nothing.
   """
-
-  lut = {
-    0x80: 0xBF,
-    0x81: 0xF3,
-    0x82: 0x27,
-    0x83: 0x6B,
-    0x84: 0x92,
-    0x85: 0xDE,
-    0x86: 0x0A,
-    0x87: 0x46,
-    0x88: 0xE5,
-    0x89: 0xA9,
-    0x8A: 0x7D,
-    0x8B: 0x31,
-    0x8C: 0xC8,
-    0x8D: 0x84,
-    0x8E: 0x50,
-  }
-
-  return lut.get(b2, 0)
+  FLIPS = {7: 0xBF, 5: 0x3A, 3: 0x5A, 2: 0x2D, 1: 0x98, 0: 0x4C}
+  c = 0
+  for bit, flip in FLIPS.items():
+    if (b2 >> bit) & 1:
+      c ^= flip
+  return c
 
 
 def checksum_lca_4_message(*args) -> int:

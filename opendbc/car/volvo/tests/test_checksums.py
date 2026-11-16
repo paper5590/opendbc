@@ -32,6 +32,14 @@ PSCM_RELATED_CHECKSUM_2 = {
   0x8A: 0x7D, 0x8B: 0x31, 0x8C: 0xC8, 0x8D: 0x84, 0x8E: 0x50,
 }
 
+# b2 -> byte[3] while the rack is in its fault state. After the rack resets itself
+# mid-drive, it sets byte[2]'s high nibble to 0xA and holds it until power cycle.
+PSCM_RELATED_CHECKSUM_2_FAULT = {
+  0xA0: 0x85, 0xA1: 0xC9, 0xA2: 0x1D, 0xA3: 0x51, 0xA4: 0xA8,
+  0xA5: 0xE4, 0xA6: 0x30, 0xA7: 0x7C, 0xA8: 0xDF, 0xA9: 0x93,
+  0xAA: 0x47, 0xAB: 0x0B, 0xAC: 0xF2, 0xAD: 0xBE, 0xAE: 0x6A,
+}
+
 
 class TestPscmRelatedChecksums:
   def test_checksum_1_matches_the_car(self):
@@ -48,4 +56,10 @@ class TestPscmRelatedChecksums:
 
   def test_checksum_2_matches_the_car(self):
     for b2, expected in PSCM_RELATED_CHECKSUM_2.items():
+      assert checksum_2_pscm_related_message(b2) == expected, f"b2=0x{b2:02X}"
+
+  def test_checksum_2_covers_rack_fault_state(self):
+    # regression: the lookup table only covered byte[2] = 0x80..0x8E and returned 0x00
+    # for the fault state, so the car got an invalid checksum while the rack was faulted
+    for b2, expected in PSCM_RELATED_CHECKSUM_2_FAULT.items():
       assert checksum_2_pscm_related_message(b2) == expected, f"b2=0x{b2:02X}"
